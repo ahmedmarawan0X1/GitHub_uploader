@@ -39,6 +39,19 @@ internal object GitHubApi {
         newRepoName: String, description: String, privateRepo: Boolean, existing: RepoInfo?,
         progress: (Int, Int, String) -> Unit
     ): String {
+        return uploadZipInternal(
+            context, token, mode, newRepoName, description, privateRepo, existing,
+            { context.contentResolver.openInputStream(uri) ?: error("Could not open ZIP file") }, progress
+        )
+    }
+
+    private fun uploadZipInternal(
+        context: Context, token: String, mode: UploadMode,
+        newRepoName: String, description: String, privateRepo: Boolean, existing: RepoInfo?,
+        openInput: () -> java.io.InputStream,
+        progress: (Int, Int, String) -> Unit
+    ): String {
+
         val owner: String
         val repo: String
         val branch: String
@@ -61,7 +74,7 @@ internal object GitHubApi {
             branch = JSONObject(r.body).optString("default_branch", s.defaultBranch.ifBlank { "main" })
         }
 
-        val files = readZip(context, uri)
+        val files = readZipFromStream(openInput)
         if (files.isEmpty()) error("ZIP file contains no files")
         progress(0, files.size, "Found ${files.size} files")
 
@@ -110,11 +123,25 @@ internal object GitHubApi {
         return "https://github.com/$owner/$repo"
     }
 
+    fun uploadZipFile(
+        context: Context, filePath: String, token: String, mode: UploadMode,
+        newRepoName: String, description: String, privateRepo: Boolean, existing: RepoInfo?,
+        progress: (Int, Int, String) -> Unit
+    ): String {
+        return uploadZipInternal(
+            context, token, mode, newRepoName, description, privateRepo, existing,
+            { java.io.FileInputStream(java.io.File(filePath)) }, progress
+        )
+    }
+
     private data class Z(val path: String, val bytes: ByteArray)
 
-    private fun readZip(context: Context, uri: Uri): List<Z> {
+    private fun readZip(context: Context, uri: Uri): List<Z> =
+        readZipFromStream { context.contentResolver.openInputStream(uri) ?: error("Could not open ZIP file") }
+
+    private fun readZipFromStream(open: () -> java.io.InputStream): List<Z> {
         val result = mutableListOf<Z>()
-        context.contentResolver.openInputStream(uri)?.use { input ->
+        open().use { input ->
             ZipInputStream(input).use { zip ->
                 var e = zip.nextEntry
                 while (e != null) {

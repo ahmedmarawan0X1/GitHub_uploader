@@ -1,25 +1,37 @@
-name: Build Android APK
+name: Build Android Release APK
+
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
       - name: Download Gradle
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip
           unzip -q gradle-8.9-bin.zip
-      - name: Build Debug APK
-        run: ./gradle-8.9/bin/gradle assembleDebug --no-daemon
+
+      - name: Build signed Release APK
+        run: ./gradle-8.9/bin/gradle assembleRelease --no-daemon
+
+      - name: Verify APK signature
+        run: |
+          APK=$(find app/build/outputs/apk/release -name "*.apk" -print -quit)
+          test -n "$APK" || { echo "Release APK not found"; exit 1; }
+          $ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --verbose "$APK"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: GitHubZipUploader-debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: GitHubZipUploader-release-signed
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error

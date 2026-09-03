@@ -31,6 +31,10 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.documentfile.provider.DocumentFile
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,17 +52,79 @@ class MainActivity : ComponentActivity() {
     private var selectedName by mutableStateOf("")
 
     private val picker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            selectedUri = uri
-            selectedName = DocumentFile.fromSingleUri(this, uri)?.name
-                ?: uri.lastPathSegment?.substringAfterLast('/') ?: "project.zip"
+        if (uri != null) acceptZipUri(uri, takePersistable = true)
+    }
+
+    private fun isZipUri(uri: Uri): Boolean {
+        val name = runCatching {
+            DocumentFile.fromSingleUri(this, uri)?.name
+        }.getOrNull().orEmpty()
+        val mime = runCatching { contentResolver.getType(uri) }.getOrNull().orEmpty().lowercase()
+        return name.lowercase().endsWith(".zip") ||
+                mime == "application/zip" ||
+                mime == "application/x-zip-compressed" ||
+                mime == "application/x-compress" ||
+                mime == "application/octet-stream"
+    }
+
+    private fun acceptZipUri(uri: Uri, takePersistable: Boolean = false) {
+        if (!isZipUri(uri)) return
+
+        if (takePersistable) {
+            runCatching {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
         }
+
+        val name = runCatching {
+            DocumentFile.fromSingleUri(this, uri)?.name
+        }.getOrNull().orEmpty().ifBlank {
+            uri.lastPathSegment?.substringAfterLast('/')?.ifBlank { null } ?: "project.zip"
+        }
+
+        selectedUri = uri
+        selectedName = name
+    }
+
+    private fun handleIncomingIntent(incoming: Intent?) {
+        if (incoming == null) return
+
+        // File managers and share sheets can grant a temporary URI permission.
+        // Keep that permission while the app is running, but don't require it to be persistable.
+        runCatching {
+            val flags = incoming.flags and
+                    (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            if (flags != 0) grantUriPermission(packageName, incoming.data, flags)
+        }
+
+        val candidates = mutableListOf<Uri>()
+        incoming.data?.let(candidates::add)
+        incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(candidates::add)
+        if (incoming.action == Intent.ACTION_SEND_MULTIPLE) {
+            incoming.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.forEach(candidates::add)
+        }
+        incoming.clipData?.let { clip ->
+            for (i in 0 until clip.itemCount) {
+                clip.getItemAt(i).uri?.let(candidates::add)
+            }
+        }
+
+        candidates.firstOrNull(::isZipUri)?.let { acceptZipUri(it) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        handleIncomingIntent(intent)
         setContent {
             val prefs = remember { getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
             var theme by remember {
@@ -95,27 +161,26 @@ class MainActivity : ComponentActivity() {
 
             AppTheme(dark = dark) {
                 CompositionLocalProvider(LocalLayoutDirection provides if (ar) LayoutDirection.Rtl else LayoutDirection.Ltr) {
-                    // سطح خارجي يغطي الشاشة بالكامل ويستخدم خلفية الـ ColorScheme الحالية.
-                    // ده مهم خصوصًا في وضع AMOLED/Dark حتى لا تظل خلفية الشاشة فاتحة.
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
                         when (screen) {
-                        Screen.HOME -> HomeScreen(
-                            t, prefs.getString(PREF_TOKEN, "") ?: "", selectedUri, selectedName,
-                            { prefs.edit().putString(PREF_TOKEN, it).apply() },
-                            { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
-                            { screen = Screen.SETTINGS }
-                        )
-                        Screen.SETTINGS -> SettingsScreen(
-                            t, theme, language,
-                            { theme = it; prefs.edit().putString(PREF_THEME, it.name).apply() },
-                            { language = it; prefs.edit().putString(PREF_LANGUAGE, it.name).apply() },
-                            { screen = Screen.HOME },
-                            { screen = Screen.HELP }
-                        )
-                        Screen.HELP -> HelpScreen(t) { screen = Screen.SETTINGS }
+                            Screen.HOME -> HomeScreen(
+                                t, prefs.getString(PREF_TOKEN, "") ?: "", selectedUri, selectedName,
+                                { prefs.edit().putString(PREF_TOKEN, it).apply() },
+                                { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
+                                { request -> WorkManager.getInstance(this@MainActivity).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request) },
+                                { screen = Screen.SETTINGS }
+                            )
+                            Screen.SETTINGS -> SettingsScreen(
+                                t, theme, language,
+                                { theme = it; prefs.edit().putString(PREF_THEME, it.name).apply() },
+                                { language = it; prefs.edit().putString(PREF_LANGUAGE, it.name).apply() },
+                                { screen = Screen.HOME },
+                                { screen = Screen.HELP }
+                            )
+                            Screen.HELP -> HelpScreen(t) { screen = Screen.SETTINGS }
                         }
                     }
                 }
@@ -128,7 +193,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun HomeScreen(
     t: AppStrings, tokenPref: String, selectedUri: Uri?, selectedName: String,
-    saveToken: (String) -> Unit, pickZip: () -> Unit, openSettings: () -> Unit
+    saveToken: (String) -> Unit, pickZip: () -> Unit, enqueueUpload: (androidx.work.OneTimeWorkRequest) -> Unit, openSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -140,12 +205,48 @@ private fun HomeScreen(
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
     var selectedRepo by remember { mutableStateOf<RepoInfo?>(null) }
     var loading by remember { mutableStateOf(false) }
-    var uploading by remember { mutableStateOf(false) }
-    var progress by remember { mutableStateOf(0f) }
-    var progressText by remember { mutableStateOf("") }
+    var preparing by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var statusSuccess by remember { mutableStateOf<Boolean?>(null) }
     var resultUrl by remember { mutableStateOf("") }
+    var workProgress by remember { mutableStateOf(0f) }
+    var progressText by remember { mutableStateOf("") }
+    var uploading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val wm = WorkManager.getInstance(context)
+        while (true) {
+            val info = withContext(Dispatchers.IO) { wm.getWorkInfosForUniqueWork(WORK_NAME).get().firstOrNull() }
+            if (info != null) {
+                uploading = info.state == androidx.work.WorkInfo.State.RUNNING || info.state == androidx.work.WorkInfo.State.ENQUEUED || preparing
+                val done = info.progress.getInt(UploadWorker.KEY_DONE, 0)
+                val total = info.progress.getInt(UploadWorker.KEY_TOTAL, 0)
+                workProgress = if (total > 0) done.toFloat() / total else 0f
+                progressText = info.progress.getString(UploadWorker.KEY_TEXT).orEmpty()
+                when (info.state) {
+                    androidx.work.WorkInfo.State.SUCCEEDED -> {
+                        status = t.success
+                        statusSuccess = true
+                        resultUrl = info.outputData.getString(UploadWorker.KEY_RESULT_URL).orEmpty()
+                        preparing = false
+                    }
+                    androidx.work.WorkInfo.State.FAILED -> {
+                        status = "${t.error}: ${info.outputData.getString(UploadWorker.KEY_ERROR).orEmpty()}"
+                        statusSuccess = false
+                        resultUrl = ""
+                        preparing = false
+                    }
+                    androidx.work.WorkInfo.State.CANCELLED -> {
+                        status = if (t.ar) "تم إلغاء الرفع" else "Upload cancelled"
+                        statusSuccess = false
+                        preparing = false
+                    }
+                    else -> Unit
+                }
+            }
+            kotlinx.coroutines.delay(700)
+        }
+    }
     var showToken by remember { mutableStateOf(false) }
 
     Column(
@@ -261,34 +362,47 @@ private fun HomeScreen(
             enabled = !uploading && token.isNotBlank() && selectedUri != null &&
                     ((mode == UploadMode.NEW && repoName.isNotBlank()) || (mode == UploadMode.EXISTING && selectedRepo != null)),
             onClick = {
-                uploading = true; progress = 0f; status = ""; statusSuccess = null; resultUrl = ""; saveToken(token)
+                status = ""; statusSuccess = null; resultUrl = ""; progressText = ""; workProgress = 0f
+                saveToken(token)
+                preparing = true
                 scope.launch {
                     try {
-                        val result = withContext(Dispatchers.IO) {
-                            GitHubApi.uploadZip(
-                                context, selectedUri!!, token.trim(), mode, repoName.trim(),
-                                description.trim(), privateRepo, selectedRepo
-                            ) { done, total, text ->
-                                progress = if (total == 0) 0f else done.toFloat() / total
-                                progressText = text
-                            }
+                        val localZip = withContext(Dispatchers.IO) {
+                            val dir = java.io.File(context.filesDir, "pending_uploads").apply { mkdirs() }
+                            val file = java.io.File(dir, "upload_${System.currentTimeMillis()}.zip")
+                            context.contentResolver.openInputStream(selectedUri!!)?.use { input ->
+                                file.outputStream().use { output -> input.copyTo(output) }
+                            } ?: error("Could not open ZIP file")
+                            file
                         }
-                        status = t.success
-                        statusSuccess = true
-                        resultUrl = result
+                        val data = workDataOf(
+                            UploadWorker.KEY_FILE_PATH to localZip.absolutePath,
+                            UploadWorker.KEY_MODE to mode.name,
+                            UploadWorker.KEY_NEW_REPO to repoName.trim(),
+                            UploadWorker.KEY_DESCRIPTION to description.trim(),
+                            UploadWorker.KEY_PRIVATE to privateRepo,
+                            UploadWorker.KEY_OWNER to selectedRepo?.owner.orEmpty(),
+                            UploadWorker.KEY_REPO to selectedRepo?.name.orEmpty(),
+                            UploadWorker.KEY_FULL_NAME to selectedRepo?.fullName.orEmpty(),
+                            UploadWorker.KEY_BRANCH to selectedRepo?.defaultBranch.orEmpty()
+                        )
+                        val request = OneTimeWorkRequestBuilder<UploadWorker>().setInputData(data).build()
+                        enqueueUpload(request)
+                        preparing = false
                     } catch (e: Exception) {
+                        preparing = false
+                        uploading = false
                         status = "${t.error}: ${e.message}"
                         statusSuccess = false
-                        resultUrl = ""
-                    } finally { uploading = false }
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth()
         ) { Text(if (uploading) t.uploading else t.execute) }
 
         if (uploading) {
-            LinearProgressIndicator({ progress }, Modifier.fillMaxWidth())
-            Text(progressText, style = MaterialTheme.typography.bodySmall)
+            LinearProgressIndicator({ workProgress }, Modifier.fillMaxWidth())
+            Text(progressText.ifBlank { if (preparing) (if (t.ar) "جاري تجهيز ملف ZIP..." else "Preparing ZIP...") else "" }, style = MaterialTheme.typography.bodySmall)
         }
         if (status.isNotBlank()) {
             val successColor = androidx.compose.ui.graphics.Color(0xFF2E7D32)
