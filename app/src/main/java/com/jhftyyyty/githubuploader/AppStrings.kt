@@ -41,7 +41,7 @@ internal class AppStrings(val ar: Boolean) {
     val explanation = if (ar) "شرح التطبيق" else "App guide"
     val tokenGuide = if (ar) "إنشاء رمز GitHub" else "Create GitHub Token"
     val openToken = if (ar) "فتح صفحة إنشاء الرمز" else "Open Token creation page"
-    val fine = if (ar) "صلاحيات الرمز الدقيق" else "Fine-grained Token permissions"
+    val fine = "Fine-grained Token permissions"
     val classic = if (ar) "الرمز الكلاسيكي" else "Classic Token"
     val security = if (ar) "ملاحظة أمنية" else "Security note"
     val success = if (ar) "تم بنجاح" else "Completed successfully"

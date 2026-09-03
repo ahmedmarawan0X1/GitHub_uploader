@@ -510,9 +510,9 @@ private fun HelpScreen(t: AppStrings, back: () -> Unit) {
         Text(t.fine, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
             if (t.ar) {
-                "• الوصول إلى المستودعات: جميع المستودعات أو اختر المستودعات المطلوبة.\n" +
-                "• المحتويات: قراءة وكتابة\n• الإدارة: قراءة وكتابة عند إنشاء مستودع جديد\n" +
-                "• مسارات العمل: قراءة وكتابة إذا كان ملف ZIP يحتوي على .github/workflows\n• البيانات الوصفية: للقراءة فقط"
+                "• Repository access: All repositories or Only select repositories.\n" +
+                "• Contents: Read and write\n• Administration: Read and write when creating a new repository\n" +
+                "• Workflows: Read and write if the ZIP contains .github/workflows\n• Metadata: Read-only"
             } else {
                 "• Repository access: All repositories, or select the repositories you need.\n" +
                 "• Contents: Read and write\n• Administration: Read and write when creating a new Repository\n" +
