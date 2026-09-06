@@ -149,11 +149,12 @@ class MainActivity : ComponentActivity() {
             }
             val t = AppStrings(ar)
             var screen by remember { mutableStateOf(Screen.HOME) }
+            var helpOrigin by remember { mutableStateOf(Screen.HOME) }
 
             LaunchedEffect(dark) { updateSystemBars(window, dark) }
             BackHandler(enabled = screen != Screen.HOME) {
                 screen = when (screen) {
-                    Screen.HELP -> Screen.SETTINGS
+                    Screen.HELP -> helpOrigin
                     Screen.SETTINGS -> Screen.HOME
                     Screen.HOME -> Screen.HOME
                 }
@@ -168,19 +169,22 @@ class MainActivity : ComponentActivity() {
                         when (screen) {
                             Screen.HOME -> HomeScreen(
                                 t, prefs.getString(PREF_TOKEN, "") ?: "", selectedUri, selectedName,
+                                prefs.getBoolean(PREF_AUTO_NAMING, true),
                                 { prefs.edit().putString(PREF_TOKEN, it).apply() },
                                 { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
                                 { request -> WorkManager.getInstance(this@MainActivity).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request) },
-                                { screen = Screen.SETTINGS }
+                                { screen = Screen.SETTINGS },
+                                { helpOrigin = Screen.HOME; screen = Screen.HELP }
                             )
                             Screen.SETTINGS -> SettingsScreen(
-                                t, theme, language,
+                                t, theme, language, prefs.getBoolean(PREF_AUTO_NAMING, true),
                                 { theme = it; prefs.edit().putString(PREF_THEME, it.name).apply() },
                                 { language = it; prefs.edit().putString(PREF_LANGUAGE, it.name).apply() },
+                                { prefs.edit().putBoolean(PREF_AUTO_NAMING, it).apply() },
                                 { screen = Screen.HOME },
-                                { screen = Screen.HELP }
+                                { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
                             )
-                            Screen.HELP -> HelpScreen(t) { screen = Screen.SETTINGS }
+                            Screen.HELP -> HelpScreen(t) { screen = helpOrigin }
                         }
                     }
                 }
@@ -192,8 +196,8 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeScreen(
-    t: AppStrings, tokenPref: String, selectedUri: Uri?, selectedName: String,
-    saveToken: (String) -> Unit, pickZip: () -> Unit, enqueueUpload: (androidx.work.OneTimeWorkRequest) -> Unit, openSettings: () -> Unit
+    t: AppStrings, tokenPref: String, selectedUri: Uri?, selectedName: String, autoNaming: Boolean,
+    saveToken: (String) -> Unit, pickZip: () -> Unit, enqueueUpload: (androidx.work.OneTimeWorkRequest) -> Unit, openSettings: () -> Unit, openHelp: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -212,6 +216,12 @@ private fun HomeScreen(
     var workProgress by remember { mutableStateOf(0f) }
     var progressText by remember { mutableStateOf("") }
     var uploading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedName, autoNaming, mode) {
+        if (autoNaming && mode == UploadMode.NEW && selectedName.isNotBlank()) {
+            repoName = selectedName.substringBefore(".").ifBlank { selectedName.substringBeforeLast(".").ifBlank { selectedName } }
+        }
+    }
 
     LaunchedEffect(Unit) {
         val wm = WorkManager.getInstance(context)
@@ -285,6 +295,8 @@ private fun HomeScreen(
             }
         }
 
+        Text(t.accountSection, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
         OutlinedTextField(
             value = token, onValueChange = { token = it; saveToken(it) },
             modifier = Modifier.fillMaxWidth(), label = { Text(t.token) }, singleLine = true,
@@ -292,11 +304,18 @@ private fun HomeScreen(
             trailingIcon = { TextButton({ showToken = !showToken }) { Text(if (showToken) t.hide else t.show) } }
         )
 
-        FilledTonalButton(
-            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TOKEN_URL))) },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text(t.newToken) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            FilledTonalButton(
+                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TOKEN_URL))) },
+                modifier = Modifier.weight(1f)
+            ) { Text(t.newToken) }
+            Spacer(Modifier.width(8.dp))
+            FilledTonalIconButton(onClick = openHelp) {
+                Text("?", fontWeight = FontWeight.Bold)
+            }
+        }
 
+        Text(t.operationSection, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             FilterChip(mode == UploadMode.NEW, { mode = UploadMode.NEW }, label = { Text(t.createRepo) }, Modifier.weight(1f))
             FilterChip(mode == UploadMode.EXISTING, { mode = UploadMode.EXISTING }, label = { Text(t.updateRepo) }, Modifier.weight(1f))
@@ -350,6 +369,7 @@ private fun HomeScreen(
             }
         }
 
+        Text(t.fileSection, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         OutlinedButton(onClick = pickZip, enabled = !uploading, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.CloudUpload, null)
             Spacer(Modifier.width(8.dp))
@@ -475,8 +495,8 @@ private fun HomeScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(
-    t: AppStrings, theme: ThemeMode, language: LanguageMode,
-    changeTheme: (ThemeMode) -> Unit, changeLanguage: (LanguageMode) -> Unit,
+    t: AppStrings, theme: ThemeMode, language: LanguageMode, autoNaming: Boolean,
+    changeTheme: (ThemeMode) -> Unit, changeLanguage: (LanguageMode) -> Unit, changeAutoNaming: (Boolean) -> Unit,
     back: () -> Unit, help: () -> Unit
 ) {
     val context = LocalContext.current
@@ -509,6 +529,15 @@ private fun SettingsScreen(
             Icons.Default.Language, t.language,
             when (language) { LanguageMode.SYSTEM -> t.device; LanguageMode.ARABIC -> t.arabic; LanguageMode.ENGLISH -> t.english }
         ) { languageDialog = true }
+
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+            ListItem(
+                headlineContent = { Text(t.autoNaming, fontWeight = FontWeight.SemiBold) },
+                supportingContent = { Text(t.autoNamingSub) },
+                leadingContent = { Icon(Icons.Default.AutoAwesome, null) },
+                trailingContent = { Switch(checked = autoNaming, onCheckedChange = changeAutoNaming) }
+            )
+        }
 
         SettingCard(Icons.Default.Link, t.projectLink, t.openProject, onClick = {
             runCatching {
@@ -597,53 +626,67 @@ private fun HelpScreen(t: AppStrings, back: () -> Unit) {
         Modifier.fillMaxSize()
             .safeDrawingPadding()
             .verticalScroll(rememberScrollState())
-            .padding(18.dp)
+            .padding(horizontal = 18.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         TopAppBar(
             modifier = Modifier.fillMaxWidth(),
             title = { Text(t.help, fontWeight = FontWeight.Bold) },
             navigationIcon = { IconButton(back) { Icon(Icons.Default.ArrowBack, t.back) } }
         )
-        Text(t.explanation, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            if (t.ar) "التطبيق يرفع محتوى ملف ZIP إلى GitHub. يمكنك إنشاء Repository جديد أو تحديث Repository موجود مباشرة من الهاتف باستخدام GitHub API."
-            else "The app uploads a ZIP file to GitHub. You can create a new repository or update an existing repository directly from the phone using the GitHub API."
-        )
-        Spacer(Modifier.height(18.dp))
 
-        Text(t.tokenGuide, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(if (t.ar) "استخدم الرابط التالي لإنشاء Fine-grained Personal Access Token." else "Use the following link to create a Fine-grained Personal Access Token.")
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TOKEN_URL))) },
-            Modifier.fillMaxWidth()
-        ) { Text(t.openToken) }
-
-        Spacer(Modifier.height(16.dp))
-        Text(t.fine, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(
-            if (t.ar) {
-                "• Repository access: All repositories or Only select repositories.\n" +
-                "• Contents: Read and write\n• Administration: Read and write when creating a new repository\n" +
-                "• Workflows: Read and write if the ZIP contains .github/workflows\n• Metadata: Read-only"
-            } else {
-                "• Repository access: All repositories, or select the repositories you need.\n" +
-                "• Contents: Read and write\n• Administration: Read and write when creating a new Repository\n" +
-                "• Workflows: Read and write if the ZIP contains .github/workflows\n• Metadata: Read-only"
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(t.helpIntroTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(t.helpIntro, style = MaterialTheme.typography.bodyMedium)
             }
-        )
+        }
 
-        Spacer(Modifier.height(14.dp))
-        Text(t.classic, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(if (t.ar) "• الصلاحية المطلوبة: repo" else "• Classic Token: repo")
+        HelpSection(Icons.Default.AddCircleOutline, t.helpCreateTitle, t.helpCreate)
+        HelpSection(Icons.Default.SystemUpdate, t.helpUpdateTitle, t.helpUpdate)
 
-        Spacer(Modifier.height(14.dp))
-        Text(if (t.ar) "استخدم زر الرجوع للعودة إلى صفحة الإعدادات." else "Use the back button to return to Settings.")
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Key, null)
+                    Spacer(Modifier.width(10.dp))
+                    Text(t.tokenGuide, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                }
+                Text(if (t.ar) "استخدم Fine-grained Personal Access Token كلما أمكن." else "Use a Fine-grained Personal Access Token when possible.")
+                OutlinedButton(
+                    { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TOKEN_URL))) },
+                    Modifier.fillMaxWidth()
+                ) { Text(t.openToken) }
+                Text(t.fine, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(if (t.ar) "• Repository access: المستودعات المطلوبة.\n• Contents: Read and write\n• Administration: Read and write عند إنشاء مستودع جديد\n• Workflows: Read and write إذا كان ZIP يحتوي على .github/workflows\n• Metadata: Read-only" else "• Repository access: repositories you need\n• Contents: Read and write\n• Administration: Read and write when creating a repository\n• Workflows: Read and write if the ZIP contains .github/workflows\n• Metadata: Read-only")
+                Text(t.classic, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(if (t.ar) "• الصلاحية المطلوبة: repo" else "• Required scope: repo")
+            }
+        }
 
-        Spacer(Modifier.height(14.dp))
-        Text(t.security, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(t.noShare, style = MaterialTheme.typography.bodySmall)
+        HelpSection(Icons.Default.AutoAwesome, t.helpAutoTitle, t.helpAuto)
+        HelpSection(Icons.Default.NotificationsActive, t.helpProgressTitle, t.helpProgress)
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(t.security, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(t.noShare, style = MaterialTheme.typography.bodyMedium)
+                Text(t.helpBack, style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }
 
+@Composable
+private fun HelpSection(icon: ImageVector, title: String, text: String) {
+    Card(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.Top) {
+            Icon(icon, null, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(text, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}

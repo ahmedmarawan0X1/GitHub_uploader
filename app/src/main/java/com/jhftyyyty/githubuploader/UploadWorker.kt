@@ -38,7 +38,7 @@ class UploadWorker(
             // Start as a foreground worker while the app may be backgrounded.
             // Keep this inside the try block so foreground-service restrictions are
             // reported as a normal WorkManager failure instead of crashing the app.
-            setForeground(createForegroundInfo("Starting ZIP upload…", 0))
+            setForeground(createForegroundInfo(0, 0))
 
             val result = GitHubApi.uploadZipFile(
                 applicationContext,
@@ -50,9 +50,8 @@ class UploadWorker(
                 inputData.getBoolean(KEY_PRIVATE, true),
                 existing
             ) { done, total, text ->
-                val percent = if (total <= 0) 0 else ((done.toDouble() / total) * 100).toInt().coerceIn(0, 100)
                 setProgressAsync(workDataOf(KEY_DONE to done, KEY_TOTAL to total, KEY_TEXT to text))
-                runCatching { setForegroundAsync(createForegroundInfo(text, percent)) }
+                runCatching { updateNotification(done, total) }
             }
             Result.success(workDataOf(KEY_RESULT_URL to result, KEY_TEXT to "Upload completed"))
         } catch (e: Exception) {
@@ -63,23 +62,10 @@ class UploadWorker(
         }
     }
 
-    private fun createForegroundInfo(text: String, progress: Int): ForegroundInfo {
+    private fun createForegroundInfo(done: Int, total: Int): ForegroundInfo {
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "GitHub uploads", NotificationManager.IMPORTANCE_LOW)
-            )
-        }
-
-        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_upload)
-            .setContentTitle("GitHub Uploader")
-            .setContentText(text)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setProgress(100, progress.coerceIn(0, 100), progress <= 0)
-            .build()
-
+        ensureNotificationChannel(manager)
+        val notification = buildNotification(done, total)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(
                 NOTIFICATION_ID,
@@ -88,6 +74,31 @@ class UploadWorker(
             )
         } else {
             ForegroundInfo(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun updateNotification(done: Int, total: Int) {
+        val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        ensureNotificationChannel(manager)
+        manager.notify(NOTIFICATION_ID, buildNotification(done, total))
+    }
+
+    private fun buildNotification(done: Int, total: Int) =
+        NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_sys_upload)
+            // The notification intentionally contains only file progress.
+            .setContentTitle("$done / $total")
+            .setContentText(null)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setProgress(total.coerceAtLeast(0), done.coerceIn(0, total.coerceAtLeast(0)), total <= 0)
+            .build()
+
+    private fun ensureNotificationChannel(manager: NotificationManager) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "GitHub uploads", NotificationManager.IMPORTANCE_LOW)
+            )
         }
     }
 
