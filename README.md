@@ -1,77 +1,58 @@
-# GitHub uploader
+# GitHub uploader 2.0
 
-## 🇪🇬 شرح التطبيق بالعربية
+Android app for managing GitHub repositories directly from a phone.
 
-**GitHub uploader** هو تطبيق أندرويد مخصص لرفع مشاريع **GitHub** من الهاتف مباشرةً باستخدام ملف **ZIP**.
+## What changed in V2
 
-فكرة التطبيق بسيطة: بدل ما تفك ضغط المشروع وتنقل ملفاته إلى GitHub يدويًا، تختار ملف المشروع المضغوط من الهاتف، تدخل بيانات الوصول إلى حساب GitHub، ثم تختار إذا كنت تريد إنشاء مستودع جديد أو تحديث مستودع موجود.
+- Create repositories from ZIP files.
+- Update an existing repository.
+- Exact Sync mode: remove remote files that are no longer in the ZIP.
+- Download a repository branch as a ZIP.
+- Changed-file detection using Git blob SHA, so unchanged files are skipped.
+- ZIP processing uses temporary files and bounded buffers instead of keeping the whole project in RAM.
+- Background WorkManager jobs with progress notifications.
+- GitHub token storage is encrypted with Android Keystore.
+- Manual Personal Access Token remains fully supported.
+- Optional GitHub browser/device login can be enabled with a GitHub OAuth/App client ID.
+- Cleaner Material 3 interface with Arabic/English support and no decorative emoji labels.
+- Release signing credentials are no longer stored in the repository.
 
-### طريقة استخدام التطبيق
+## Authentication
 
-1. افتح التطبيق وأدخل **GitHub Personal Access Token** الخاص بك.
-2. اختر ملف المشروع بصيغة **ZIP** من ذاكرة الهاتف.
-3. حدد طريقة التعامل مع المشروع:
-   - **إنشاء Repository جديد:** اكتب اسم المستودع والوصف وحدد إذا كان المستودع خاصًا أو عامًا.
-   - **تحديث Repository:** اختر المستودع الذي تريد تحديثه من المستودعات المرتبطة بحسابك.
-4. اضغط على زر تنفيذ عملية الرفع.
-5. أثناء العملية يعرض التطبيق حالة الرفع والتقدم.
-6. بعد انتهاء العملية، يظهر رابط المستودع الذي تم التعامل معه، ويمكن الضغط عليه لفتحه مباشرةً في متصفح الهاتف.
+### Personal Access Token
 
-### الوصول إلى GitHub
+This is the simplest and most reliable option for direct API uploads. Use a Fine-grained token with access to the repositories you need and repository Contents permission.
 
-التطبيق يتعامل مع GitHub من خلال **GitHub API**، لذلك يحتاج إلى **Personal Access Token** يسمح له بالوصول إلى المستودعات المطلوبة.
+### Browser login
 
-يمكن إنشاء الـ Token من GitHub، ثم وضعه في خانة الـ Token داخل التطبيق. وفي حالة استخدام **Fine-grained Token** يجب إعطاؤه الصلاحيات المناسبة للمستودعات التي تريد التعامل معها، خصوصًا صلاحية قراءة وكتابة محتوى المستودعات.
+Browser login uses GitHub OAuth Device Flow. The Android build must be configured with a GitHub application client ID and Device Flow enabled for that application.
 
-### إنشاء مشروع جديد أو تحديث مشروع موجود
+For local builds, add:
 
-عند إنشاء Repository جديد، يقوم التطبيق بإنشاء المستودع ثم يرفع محتويات ملف ZIP إليه.
+`githubClientId=YOUR_CLIENT_ID`
 
-وعند تحديث Repository، يختار التطبيق المستودع المطلوب ثم يرفع محتويات ملف ZIP إليه لتحديث ملفات المشروع الموجودة على GitHub.
+to your local Gradle properties.
 
-### رابط المشروع
+Do not put a client secret in the Android app.
 
-الرابط الافتراضي للمشروع هو:
+## Large files
 
-`https://github.com/jhftyyyty/GitHub_uploader`
+GitHub's Git database has file-size limits. The app rejects individual ZIP entries above 90 MB and processes files one at a time to keep memory usage bounded. For projects containing very large assets, Git LFS or another artifact storage strategy is recommended.
 
-رابط المشروع ثابت داخل التطبيق ويظهر في الإعدادات للرجوع إليه.
+## Update vs Exact Sync
 
----
+**Update** keeps remote-only files and replaces/adds only files that differ.
 
-## 🇬🇧 App Description in English
+**Exact Sync** makes the Git tree match the selected ZIP and deletes remote files that are absent from the ZIP.
 
-**GitHub uploader** is an Android application designed to upload **GitHub projects** directly from a phone using a **ZIP** project file.
+The app ignores common generated/local content such as `.git/`, `build/`, `.gradle/`, `.idea/`, `local.properties`, and log files.
 
-The idea is simple: instead of extracting a project and manually moving its files to GitHub, you select the ZIP file from your device, provide your GitHub access credentials, and then choose whether you want to create a new repository or update an existing one.
+## CI
 
-### How to Use the App
+The GitHub Actions workflow builds and lints the release variant. Signing is intentionally external to the repository; configure secure CI signing variables if you want signed release artifacts.
 
-1. Open the app and enter your **GitHub Personal Access Token**.
-2. Select the project **ZIP** file from your phone.
-3. Choose how you want to handle the project:
-   - **Create a new Repository:** enter the repository name and description, then choose whether it should be private or public.
-   - **Update an existing Repository:** select the repository you want to update from the repositories available in your GitHub account.
-4. Press the button to start the upload operation.
-5. The app displays the upload status and progress while the operation is running.
-6. When the operation is completed, the repository URL is displayed and can be tapped to open it directly in the phone's web browser.
+## Security
 
-### GitHub Access
+The old committed release keystore and hardcoded signing credentials were removed from the V2 branch. If that key was ever used for a distributed application, treat it as compromised and rotate the signing strategy as appropriate.
 
-The application communicates with GitHub through the **GitHub API**, so it requires a **Personal Access Token** with access to the repositories you want to use.
-
-Create the token through GitHub and enter it in the Token field in the app. When using a **Fine-grained Token**, make sure it has the required permissions for the selected repositories, especially permission to read and write repository contents.
-
-### Creating or Updating a Project
-
-When creating a new Repository, the app creates the repository and then uploads the contents of the selected ZIP file to it.
-
-When updating an existing Repository, the app lets you select the required repository and then uploads the ZIP project contents to update the project files on GitHub.
-
-### Project Link
-
-The default project link is:
-
-`https://github.com/jhftyyyty/GitHub_uploader`
-
-The project link is fixed in the app and is shown in Settings for reference.
+Project: https://github.com/jhftyyyty/GitHub_uploader
