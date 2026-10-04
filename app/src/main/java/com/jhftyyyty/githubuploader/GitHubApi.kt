@@ -113,7 +113,7 @@ internal object GitHubApi {
         c.requestMethod="POST";c.doOutput=true;c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2026-03-10");c.setRequestProperty("Content-Type","application/json");c.connectTimeout=20000;c.readTimeout=120000
         val out=c.outputStream
         out.write("{\"content\":\"".toByteArray());out.flush()
-        temp.inputStream().buffered().use{input->Base64OutputStream(out,false).use{b64->input.copyTo(b64,64*1024)}}
+        temp.inputStream().buffered().use{input->val b64=Base64OutputStream(out,android.util.Base64.NO_WRAP);input.copyTo(b64,64*1024);b64.flush()}
         out.write("\",\"encoding\":\"base64\"}".toByteArray());out.flush();out.close()
         val code=c.responseCode;val body=(if(code in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText()}.orEmpty();c.disconnect()
         val r=R(code,body);checkOk(r,"Blob upload failed");return JSONObject(r.body).getString("sha")
