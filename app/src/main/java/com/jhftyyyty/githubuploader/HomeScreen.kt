@@ -26,7 +26,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeScreen(
+internal fun HomeScreen(
     t: AppStrings,
     uri: Uri?,
     name: String,
