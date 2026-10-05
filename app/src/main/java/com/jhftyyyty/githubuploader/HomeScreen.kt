@@ -24,11 +24,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HomeScreen(
     t: AppStrings,
+    token: String,
     uri: Uri?,
     name: String,
     autoNaming: Boolean,
@@ -38,10 +41,7 @@ internal fun HomeScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val store = remember { TokenStore(context) }
-
-    var token by remember { mutableStateOf(store.get()) }
-    var account by remember { mutableStateOf<String?>(null) }
+     var account by remember { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(UploadMode.NEW) }
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
     var selected by remember { mutableStateOf<RepoInfo?>(null) }
@@ -54,7 +54,9 @@ internal fun HomeScreen(
     var progress by remember { mutableStateOf(0f) }
     var progressText by remember { mutableStateOf("") }
     var result by remember { mutableStateOf("") }
-    var showToken by remember { mutableStateOf(false) }
+    var preview by remember { mutableStateOf<PreviewSummary?>(null) }
+    var previewFile by remember { mutableStateOf<File?>(null) }
+    var preparing by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(name, autoNaming, mode) {
@@ -185,43 +187,8 @@ internal fun HomeScreen(
                         }
                     }
 
-                    OutlinedTextField(
-                        value = token,
-                        onValueChange = { token = it; store.save(it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(t.token) },
-                        singleLine = true,
-                        visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            TextButton(onClick = { showToken = !showToken }) {
-                                Text(if (showToken) t.hide else t.show)
-                            }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors()
-                    )
-
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(TOKEN_URL))
-                                )
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(t.createToken)
-                        }
-                        OutlinedButton(
-                            onClick = help,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.HelpOutline, null)
-                            Spacer(Modifier.width(6.dp))
-                            Text(t.help)
-                        }
+                    TextButton(onClick = settings) {
+                        Text(if (token.isBlank()) t.noToken else t.settings)
                     }
                 }
             }
@@ -348,7 +315,7 @@ internal fun HomeScreen(
                                     repos = withContext(Dispatchers.IO) { GitHubApi.listRepositories(token) }
                                     account = withContext(Dispatchers.IO) { GitHubApi.currentUser(token).login }
                                 }.onFailure {
-                                    message = t.error + ": " + (it.message ?: "")
+                                    message = GitHubApi.friendlyError(it.message ?: t.error)
                                     ok = false
                                 }
                             }
@@ -410,7 +377,8 @@ internal fun HomeScreen(
                             if (mode == UploadMode.DOWNLOAD) DownloadWorker.WORK_NAME else WORK_NAME
                         )
                     } else scope.launch {
-                        busy = true
+                        if (mode != UploadMode.DOWNLOAD) preparing = true
+                        busy = mode == UploadMode.DOWNLOAD
                         ok = null
                         message = ""
                         result = ""
@@ -434,37 +402,19 @@ internal fun HomeScreen(
                                         ?.use { input -> file.outputStream().use(input::copyTo) }
                                         ?: error(t.openZip)
                                 }
-                                val actual = if (mode == UploadMode.NEW) UploadMode.NEW.name else UploadMode.EXISTING.name
-                                val d = workDataOf(
-                                    UploadWorker.KEY_FILE_PATH to file.absolutePath,
-                                    UploadWorker.KEY_MODE to actual,
-                                    UploadWorker.KEY_NEW_REPO to repoName.trim(),
-                                    UploadWorker.KEY_DESCRIPTION to description.trim(),
-                                    UploadWorker.KEY_PRIVATE to privateRepo,
-                                    UploadWorker.KEY_OWNER to selected?.owner.orEmpty(),
-                                    UploadWorker.KEY_REPO to selected?.name.orEmpty(),
-                                    UploadWorker.KEY_FULL_NAME to selected?.fullName.orEmpty(),
-                                    UploadWorker.KEY_BRANCH to selected?.defaultBranch.orEmpty()
-                                )
-                                val constraints = Constraints.Builder()
-                                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                                    .setRequiresStorageNotLow(true)
-                                    .build()
-                                val request = OneTimeWorkRequestBuilder<UploadWorker>()
-                                    .setInputData(d)
-                                    .setConstraints(constraints)
-                                    .setBackoffCriteria(BackoffPolicy.LINEAR, 10, java.util.concurrent.TimeUnit.SECONDS)
-                                    .build()
-                                WorkManager.getInstance(context).enqueueUniqueWork(
-                                    WORK_NAME,
-                                    ExistingWorkPolicy.REPLACE,
-                                    request
-                                )
+                                val summary = withContext(Dispatchers.IO) {
+                                    GitHubApi.previewZip(context, file.absolutePath, token, mode, selected)
+                                }
+                                previewFile = file
+                                preview = summary
                             }
                         } catch (e: Exception) {
                             busy = false
+                            preparing = false
                             ok = false
-                            message = t.error + ": " + (e.message ?: "")
+                            message = GitHubApi.friendlyError(e.message ?: t.error)
+                        } finally {
+                            preparing = false
                         }
                     }
                 },
@@ -473,7 +423,7 @@ internal fun HomeScreen(
             ) {
                 Icon(if (mode == UploadMode.DOWNLOAD) Icons.Default.Download else Icons.Default.CloudUpload, null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (busy) t.cancel else if (mode == UploadMode.DOWNLOAD) t.download else t.start)
+                Text(if (busy) t.cancel else if (preparing) t.working else if (mode == UploadMode.DOWNLOAD) t.download else t.review)
             }
 
             if (busy || progressText.isNotBlank()) {
@@ -567,9 +517,82 @@ internal fun HomeScreen(
             Spacer(Modifier.height(28.dp))
         }
     }
+
+    preview?.let { summary ->
+        AlertDialog(
+            onDismissRequest = {
+                previewFile?.delete()
+                previewFile = null
+                preview = null
+            },
+            title = { Text(t.previewTitle) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PreviewRow(t.files, summary.files)
+                    PreviewRow(t.added, summary.additions)
+                    PreviewRow(t.modified, summary.modified)
+                    PreviewRow(t.unchanged, summary.unchanged)
+                    PreviewRow(t.ignored, summary.ignored)
+                    if (mode == UploadMode.EXISTING) PreviewRow(t.preserved, summary.remoteOnly)
+                    PreviewRow(t.size, formatBytes(summary.totalBytes))
+                    Text(t.help11, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val file = previewFile ?: return@TextButton
+                    val d = workDataOf(
+                        UploadWorker.KEY_FILE_PATH to file.absolutePath,
+                        UploadWorker.KEY_MODE to mode.name,
+                        UploadWorker.KEY_NEW_REPO to repoName.trim(),
+                        UploadWorker.KEY_DESCRIPTION to description.trim(),
+                        UploadWorker.KEY_PRIVATE to privateRepo,
+                        UploadWorker.KEY_OWNER to selected?.owner.orEmpty(),
+                        UploadWorker.KEY_REPO to selected?.name.orEmpty(),
+                        UploadWorker.KEY_FULL_NAME to selected?.fullName.orEmpty(),
+                        UploadWorker.KEY_BRANCH to selected?.defaultBranch.orEmpty()
+                    )
+                    val constraints = Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .setRequiresStorageNotLow(true)
+                        .build()
+                    val request = OneTimeWorkRequestBuilder<UploadWorker>()
+                        .setInputData(d)
+                        .setConstraints(constraints)
+                        .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
+                        .build()
+                    WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+                    busy = true
+                    preview = null
+                    previewFile = null
+                }) { Text(t.startNow) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    previewFile?.delete()
+                    previewFile = null
+                    preview = null
+                }) { Text(t.close) }
+            }
+        )
+    }
 }
 
 
+
+@Composable
+private fun PreviewRow(label: String, value: Int) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f))
+        Text(value.toString(), fontWeight = FontWeight.SemiBold)
+    }
+}
+
+private fun formatBytes(value: Long): String = when {
+    value < 1024 -> "$value B"
+    value < 1024 * 1024 -> String.format("%.1f KB", value / 1024f)
+    else -> String.format("%.1f MB", value / (1024f * 1024f))
+}
 
 @Composable
 private fun OperationButton(
