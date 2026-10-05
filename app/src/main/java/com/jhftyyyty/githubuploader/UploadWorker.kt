@@ -6,18 +6,23 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.*
+import java.io.File
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
 class UploadWorker(app:Context,params:WorkerParameters):CoroutineWorker(app,params){
  override suspend fun doWork():Result{
   val path=inputData.getString(KEY_FILE_PATH)?:return Result.failure(workDataOf(KEY_ERROR to "ZIP file is missing"))
-  val token=inputData.getString(KEY_TOKEN).orEmpty().ifBlank{TokenStore(applicationContext).get()}
+  val token=TokenStore(applicationContext).get()
   if(token.isBlank())return Result.failure(workDataOf(KEY_ERROR to "GitHub token is missing"))
   val mode=runCatching{UploadMode.valueOf(inputData.getString(KEY_MODE)?:UploadMode.NEW.name)}.getOrDefault(UploadMode.NEW)
-  val existing=if(mode!=UploadMode.NEW)RepoInfo(inputData.getString(KEY_OWNER).orEmpty(),inputData.getString(KEY_REPO).orEmpty(),inputData.getString(KEY_FULL_NAME).orEmpty(),inputData.getString(KEY_BRANCH).orEmpty().ifBlank{"main"},false)else null
+  val existing=if(mode==UploadMode.EXISTING)RepoInfo(inputData.getString(KEY_OWNER).orEmpty(),inputData.getString(KEY_REPO).orEmpty(),inputData.getString(KEY_FULL_NAME).orEmpty(),inputData.getString(KEY_BRANCH).orEmpty().ifBlank{"main"},false)else null
   return try{
    setForeground(foreground(0,0))
-   val url=GitHubApi.uploadZipFile(applicationContext,path,token,mode,inputData.getString(KEY_NEW_REPO).orEmpty(),inputData.getString(KEY_DESCRIPTION).orEmpty(),inputData.getBoolean(KEY_PRIVATE,true),existing){d,t,msg->setProgress(workDataOf(KEY_DONE to d,KEY_TOTAL to t,KEY_TEXT to msg));notifyProgress(d,t)}
+   val url=GitHubApi.uploadZipFile(applicationContext,path,token,mode,inputData.getString(KEY_NEW_REPO).orEmpty(),inputData.getString(KEY_DESCRIPTION).orEmpty(),inputData.getBoolean(KEY_PRIVATE,true),existing,runAttemptCount>0){d,t,msg->setProgress(workDataOf(KEY_DONE to d,KEY_TOTAL to t,KEY_TEXT to msg));notifyProgress(d,t)}
    Result.success(workDataOf(KEY_RESULT_URL to url,KEY_TEXT to "Completed"))
-  }catch(e:Exception){Result.failure(workDataOf(KEY_ERROR to(e.message?:e.javaClass.simpleName)))}finally{runCatching{java.io.File(path).delete()}}
+  }catch(e:CancellationException){File(path).delete();throw e
+  }catch(e:IOException){setProgress(workDataOf(KEY_TEXT to "Internet connection lost. Upload will resume automatically."));Result.retry()
+  }catch(e:Exception){File(path).delete();Result.failure(workDataOf(KEY_ERROR to(e.message?:e.javaClass.simpleName)))}
  }
  private fun foreground(d:Int,t:Int):ForegroundInfo{ensureChannel();val n=NotificationCompat.Builder(applicationContext,CHANNEL).setSmallIcon(android.R.drawable.stat_sys_upload).setContentTitle("$d / $t").setOngoing(true).setOnlyAlertOnce(true).setProgress(t.coerceAtLeast(0),d.coerceIn(0,t.coerceAtLeast(0)),t<=0).build();return if(Build.VERSION.SDK_INT>=29)ForegroundInfo(NOTIFICATION_ID,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)else ForegroundInfo(NOTIFICATION_ID,n)}
  private fun notifyProgress(d:Int,t:Int){ensureChannel();val n=NotificationCompat.Builder(applicationContext,CHANNEL).setSmallIcon(android.R.drawable.stat_sys_upload).setContentTitle("$d / $t").setOngoing(true).setOnlyAlertOnce(true).setProgress(t.coerceAtLeast(0),d.coerceIn(0,t.coerceAtLeast(0)),t<=0).build();(applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)as NotificationManager).notify(NOTIFICATION_ID,n)}
