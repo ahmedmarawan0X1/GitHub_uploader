@@ -5,8 +5,8 @@ Android app for managing GitHub repositories directly from a phone.
 ## What changed in V2
 
 - Create repositories from ZIP files.
-- Update an existing repository.
-- Exact Sync mode: remove remote files that are no longer in the ZIP.
+- Update an existing repository using Git SHA change detection.
+- Resume interrupted uploads, cancel active uploads, and upload changed blobs in parallel.
 - Download a repository branch as a ZIP.
 - Changed-file detection using Git blob SHA, so unchanged files are skipped.
 - ZIP processing uses temporary files and bounded buffers instead of keeping the whole project in RAM.
@@ -24,15 +24,8 @@ This is the simplest and most reliable option for direct API uploads. Use a Fine
 
 ## Large files
 
-GitHub's Git database has file-size limits. The app rejects individual ZIP entries above 90 MB and processes files one at a time to keep memory usage bounded. For projects containing very large assets, Git LFS or another artifact storage strategy is recommended.
+GitHub's Git database has file-size limits. The app rejects individual ZIP entries above 90 MB and processes ZIP entries in bounded parallel batches to keep memory usage bounded. For projects containing very large assets, Git LFS or another artifact storage strategy is recommended.
 
-## Update vs Exact Sync
-
-**Update** keeps remote-only files and replaces/adds only files that differ.
-
-**Exact Sync** makes the Git tree match the selected ZIP and deletes remote files that are absent from the ZIP.
-
-The app uses GitHub API authentication with a Personal Access Token. The app ignores common generated/local content such as `.git/`, `build/`, `.gradle/`, `.idea/`, `local.properties`, and log files.
 
 ## CI
 
