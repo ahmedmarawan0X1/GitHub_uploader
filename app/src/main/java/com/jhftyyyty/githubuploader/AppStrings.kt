@@ -20,6 +20,7 @@ internal class AppStrings(context: Context, language: LanguageMode) {
     private fun get(id: Int): String = localizedContext.getString(id)
 
     val app get() = get(R.string.app_name)
+    val home get() = get(R.string.home)
     val subtitle get() = get(R.string.subtitle)
     val token get() = get(R.string.token)
     val show get() = get(R.string.show)
