@@ -890,9 +890,11 @@ private fun SettingRow(
                 Spacer(Modifier.height(2.dp))
                 Text(sub, style = MaterialTheme.typography.bodySmall)
             }
-            if (onClick != {}) {
-                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            Icon(
+                Icons.Default.ChevronRight,
+                null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
