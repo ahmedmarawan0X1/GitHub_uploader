@@ -847,8 +847,6 @@ private fun SettingsScreen(
                     )
                 }
 
-                SettingRow(Icons.Default.Security, t.security, t.securityHint) {}
-
                 Spacer(Modifier.height(4.dp))
                 OutlinedButton(
                     help,
@@ -928,6 +926,10 @@ private fun HelpScreen(t: AppStrings, back: () -> Unit) {
                 HelpCard(3, t.help3)
                 HelpCard(4, t.help4)
                 HelpCard(5, t.help5)
+                HelpCard(6, t.help6)
+                HelpCard(7, t.help7)
+                HelpCard(8, t.help8)
+                HelpCard(9, t.help9)
                 Spacer(Modifier.height(18.dp))
             }
         }
