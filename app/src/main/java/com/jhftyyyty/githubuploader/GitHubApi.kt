@@ -31,7 +31,7 @@ internal object GitHubApi {
         return out
     }
 
-    fun uploadZipFile(context:Context,filePath:String,token:String,mode:UploadMode,newRepoName:String,description:String,privateRepo:Boolean,existing:RepoInfo?,progress:(Int,Int,String)->Unit):String{
+    suspend fun uploadZipFile(context:Context,filePath:String,token:String,mode:UploadMode,newRepoName:String,description:String,privateRepo:Boolean,existing:RepoInfo?,progress:suspend (Int,Int,String)->Unit):String{
         val target=resolveRepo(token,mode,newRepoName,description,privateRepo,existing)
         val head=branchHead(token,target.owner,target.name,target.branch)
         val remote=tree(token,target.owner,target.name,head.treeSha)
