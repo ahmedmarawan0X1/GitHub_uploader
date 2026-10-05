@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.documentfile.provider.DocumentFile
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -37,21 +38,75 @@ class MainActivity : ComponentActivity() {
         if (uri != null) acceptZip(uri)
     }
 
-    private fun acceptZip(uri: Uri) {
-        val name = contentResolver.query(uri, null, null, null, null)?.use { c ->
-            val i = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-            if (i >= 0 && c.moveToFirst()) c.getString(i) else null
-        }.orEmpty()
-        if (name.lowercase().endsWith(".zip") || contentResolver.getType(uri).orEmpty().contains("zip")) {
-            runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            selectedUri = uri
-            selectedName = name.ifBlank { "project.zip" }
+    private fun isZipUri(uri: Uri): Boolean {
+        val name = runCatching {
+            DocumentFile.fromSingleUri(this, uri)?.name
+        }.getOrNull().orEmpty()
+        val mime = runCatching { contentResolver.getType(uri) }.getOrNull().orEmpty().lowercase()
+        return name.lowercase().endsWith(".zip") ||
+            mime == "application/zip" ||
+            mime == "application/x-zip-compressed" ||
+            mime == "application/x-compress" ||
+            mime == "application/octet-stream"
+    }
+
+    private fun acceptZip(uri: Uri, takePersistable: Boolean = false) {
+        if (!isZipUri(uri)) return
+
+        if (takePersistable) {
+            runCatching {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
         }
+
+        val name = runCatching {
+            DocumentFile.fromSingleUri(this, uri)?.name
+        }.getOrNull().orEmpty().ifBlank {
+            uri.lastPathSegment?.substringAfterLast('/')?.ifBlank { null } ?: "project.zip"
+        }
+
+        selectedUri = uri
+        selectedName = name
+    }
+
+    private fun handleIncomingIntent(incoming: Intent?) {
+        if (incoming == null) return
+
+        val flags = incoming.flags and (
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        if (flags != 0 && incoming.data != null) {
+            runCatching { grantUriPermission(packageName, incoming.data, flags) }
+        }
+
+        val candidates = mutableListOf<Uri>()
+        incoming.data?.let(candidates::add)
+        incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(candidates::add)
+        if (incoming.action == Intent.ACTION_SEND_MULTIPLE) {
+            incoming.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.forEach(candidates::add)
+        }
+        incoming.clipData?.let { clip ->
+            for (i in 0 until clip.itemCount) {
+                clip.getItemAt(i).uri?.let(candidates::add)
+            }
+        }
+
+        candidates.firstOrNull(::isZipUri)?.let { acceptZip(it) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
     }
 
     override fun onCreate(state: Bundle?) {
         installSplashScreen()
         super.onCreate(state)
+        handleIncomingIntent(intent)
         setContent {
             val prefs = remember { getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
             var theme by remember {
@@ -90,15 +145,19 @@ class MainActivity : ComponentActivity() {
                 SideEffect { updateSystemBars(window, dark) }
                 when (screen) {
                     Screen.HOME -> HomeScreen(
-                        t, selectedUri, selectedName,
-                        { picker.launch(arrayOf("application/zip", "application/octet-stream")) },
+                        t, selectedUri, selectedName, prefs.getBoolean(PREF_AUTO_NAMING, true),
+                        { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
+                        { settingsAutoNaming ->
+                            prefs.edit().putBoolean(PREF_AUTO_NAMING, settingsAutoNaming).apply()
+                        },
                         { screen = Screen.SETTINGS },
                         { helpOrigin = Screen.HOME; screen = Screen.HELP }
                     )
                     Screen.SETTINGS -> SettingsScreen(
-                        t, theme, language,
+                        t, theme, language, prefs.getBoolean(PREF_AUTO_NAMING, true),
                         { theme = it; prefs.edit().putString(PREF_THEME, it.name).apply() },
                         { language = it; prefs.edit().putString(PREF_LANGUAGE, it.name).apply() },
+                        { prefs.edit().putBoolean(PREF_AUTO_NAMING, it).apply() },
                         { screen = Screen.HOME },
                         { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
                     )
@@ -115,7 +174,9 @@ private fun HomeScreen(
     t: AppStrings,
     uri: Uri?,
     name: String,
+    autoNaming: Boolean,
     pick: () -> Unit,
+    changeAutoNaming: (Boolean) -> Unit,
     settings: () -> Unit,
     help: () -> Unit
 ) {
@@ -141,6 +202,12 @@ private fun HomeScreen(
     var showToken by remember { mutableStateOf(false) }
     var oauthDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(name, autoNaming, mode) {
+        if (autoNaming && mode == UploadMode.NEW && name.isNotBlank()) {
+            repoName = name.substringBeforeLast(".").ifBlank { name }
+        }
+    }
 
     fun clearFeedback() {
         message = ""
@@ -847,6 +914,26 @@ private fun SettingsScreen(
                     )
                 }
 
+                SettingRow(
+                    Icons.Default.AutoAwesome,
+                    t.autoNaming,
+                    t.autoNamingSub
+                ) {
+                    changeAutoNaming(!autoNaming)
+                }
+
+                SettingRow(
+                    Icons.Default.Link,
+                    t.projectLink,
+                    t.openProject
+                ) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(DEFAULT_PROJECT_URL))
+                        )
+                    }
+                }
+
                 Spacer(Modifier.height(4.dp))
                 OutlinedButton(
                     help,
@@ -930,6 +1017,8 @@ private fun HelpScreen(t: AppStrings, back: () -> Unit) {
                 HelpCard(7, t.help7)
                 HelpCard(8, t.help8)
                 HelpCard(9, t.help9)
+                HelpCard(10, t.help10)
+                HelpCard(11, t.help11)
                 Spacer(Modifier.height(18.dp))
             }
         }
