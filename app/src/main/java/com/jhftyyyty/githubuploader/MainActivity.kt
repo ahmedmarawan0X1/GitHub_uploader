@@ -103,10 +103,10 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
     }
 
-    override fun onTaskRemoved(rootIntent: Intent?) {
+    override fun onDestroy() {
         selectedUri = null
         selectedName = ""
-        super.onTaskRemoved(rootIntent)
+        super.onDestroy()
     }
 
     override fun onCreate(state: Bundle?) {
