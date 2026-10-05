@@ -57,6 +57,7 @@ internal class AppStrings(val ar: Boolean) {
     val arabic = if (ar) "العربية" else "Arabic"
     val english = if (ar) "الإنجليزية" else "English"
     val notConnected = if (ar) "غير متصل" else "Not connected"
+    val authHint = if (ar) "استخدم رمز GitHub للوصول إلى حسابك." else "Use a GitHub token to access your account."
 
     val help1 = if (ar) "إنشاء رمز GitHub: افتح صفحة Developer settings ثم Personal access tokens > Fine-grained tokens واضغط Generate new token." else "Create a GitHub token: open Developer settings, then Personal access tokens > Fine-grained tokens, and choose Generate new token."
     val help2 = if (ar) "اختر اسمًا للرمز، وحدد مدة الصلاحية المناسبة، ثم اختر الحساب أو المؤسسة التي سيعمل عليها الرمز." else "Give the token a name, choose an expiration period, then select the account or organization it will access."
