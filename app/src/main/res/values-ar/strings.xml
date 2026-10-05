@@ -91,4 +91,5 @@
     <string name="download_channel">تنزيلات GitHub</string>
     <string name="download_error">تعذر إكمال التنزيل</string>
     <string name="download_saved">تم حفظ الملف في Download/GitHubUploader</string>
+    <string name="missing_token">لم تتم إضافة رمز وصول GitHub.</string>
 </resources>
