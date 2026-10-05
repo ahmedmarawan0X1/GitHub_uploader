@@ -6,6 +6,7 @@ import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.HttpURLConnection
+import kotlin.coroutines.coroutineContext
 import java.net.URL
 import java.net.URLEncoder
 import java.security.MessageDigest
@@ -36,13 +37,13 @@ internal object GitHubApi {
         return out
     }
 
-    suspend fun uploadZipFile(context:Context,filePath:String,token:String,mode:UploadMode,newRepoName:String,description:String,privateRepo:Boolean,existing:RepoInfo?,progress:suspend (Int,Int,String)->Unit):String{
+    suspend fun uploadZipFile(context:Context,filePath:String,token:String,mode:UploadMode,newRepoName:String,description:String,privateRepo:Boolean,existing:RepoInfo?,resumeCheck:Boolean,progress:suspend (Int,Int,String)->Unit):String{
         val target=resolveRepo(token,mode,newRepoName,description,privateRepo,existing)
         val head=branchHead(token,target.owner,target.name,target.branch)
         val remote=tree(token,target.owner,target.name,head.treeSha)
         val total=countFiles(filePath);check(total>0){"ZIP file contains no usable files"}
         val seen=HashSet<String>();val treeEntries=JSONArray();var processed=0;var changed=0
-        data class Pending(val path:String,val temp:File)
+        data class Pending(val path:String,val temp:File,val sha:String)
         val pending=ArrayList<Pending>()
 
         suspend fun uploadBatch() {
@@ -52,7 +53,9 @@ internal object GitHubApi {
             val results=coroutineScope {
                 batch.map { item ->
                     async(Dispatchers.IO) {
-                        item to createBlob(token,target.owner,target.name,item.temp)
+                        coroutineContext.ensureActive()
+                        val sha = if (resumeCheck && blobExists(token,target.owner,target.name,item.sha)) item.sha else createBlob(token,target.owner,target.name,item.temp)
+                        item to sha
                     }
                 }.awaitAll()
             }
@@ -67,6 +70,7 @@ internal object GitHubApi {
         ZipInputStream(File(filePath).inputStream().buffered()).use{zip->
             var e=zip.nextEntry
             while(e!=null){
+                coroutineContext.ensureActive()
                 if(!e.isDirectory){
                     val path=safePath(e.name)
                     if(path!=null&&!ignored(path)){
@@ -74,8 +78,8 @@ internal object GitHubApi {
                         val temp=File(context.cacheDir,"ghu_"+System.nanoTime()+".bin")
                         val h=copyAndHash(zip,temp)
                         if(remote[path]?.sha!=h.gitSha){
-                            pending += Pending(path,temp)
-                            if (pending.size >= 4) uploadBatch()
+                            pending += Pending(path,temp,h.gitSha)
+                            if (pending.size >= 6) uploadBatch()
                         }else{
                             temp.delete()
                             progress(processed,total,"Unchanged • "+path)
@@ -86,11 +90,10 @@ internal object GitHubApi {
             }
         }
         uploadBatch()
-        if(mode==UploadMode.SYNC)remote.keys.filter{it !in seen&&remote[it]?.type=="blob"}.forEach{treeEntries.put(JSONObject().put("path",it).put("mode","100644").put("type","blob").put("sha",JSONObject.NULL));changed++}
-        if(treeEntries.length()==0){progress(total,total,"No changes");return target.url}
+                if(treeEntries.length()==0){progress(total,total,"No changes");return target.url}
         val tree=request("POST",API+"/repos/"+enc(target.owner)+"/"+enc(target.name)+"/git/trees",token,JSONObject().put("base_tree",head.treeSha).put("tree",treeEntries).toString());checkOk(tree,"Git tree creation failed")
         val treeSha=JSONObject(tree.body).getString("sha")
-        val commit=request("POST",API+"/repos/"+enc(target.owner)+"/"+enc(target.name)+"/git/commits",token,JSONObject().put("message",if(mode==UploadMode.SYNC)"Sync project" else "Update project").put("tree",treeSha).put("parents",JSONArray().put(head.sha)).toString());checkOk(commit,"Commit creation failed")
+        val commit=request("POST",API+"/repos/"+enc(target.owner)+"/"+enc(target.name)+"/git/commits",token,JSONObject().put("message",if(mode==UploadMode.NEW)"Upload project" else "Update project").put("tree",treeSha).put("parents",JSONArray().put(head.sha)).toString());checkOk(commit,"Commit creation failed")
         val newSha=JSONObject(commit.body).getString("sha")
         val update=request("PATCH",API+"/repos/"+enc(target.owner)+"/"+enc(target.name)+"/git/refs/heads/"+enc(target.branch),token,JSONObject().put("sha",newSha).put("force",false).toString());checkOk(update,"Branch update failed")
         progress(total,total,"Completed • "+changed+" changed");return target.url
@@ -139,6 +142,12 @@ internal object GitHubApi {
         return HashResult(md.digest().toHex(),size)
     }
 
+    private fun blobExists(token:String,owner:String,repo:String,sha:String):Boolean{
+        val c=URL(API+"/repos/"+enc(owner)+"/"+enc(repo)+"/git/blobs/"+enc(sha)).openConnection() as HttpURLConnection
+        c.requestMethod="GET";c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2026-03-10");c.connectTimeout=15000;c.readTimeout=30000
+        val code=try{c.responseCode}finally{c.disconnect()}
+        return when { code in 200..299 -> true; code==404 -> false; else -> { checkOk(R(code,""),"Blob check failed"); false } }
+    }
     private fun createBlob(token:String,owner:String,repo:String,temp:File):String{
         val c=URL(API+"/repos/"+enc(owner)+"/"+enc(repo)+"/git/blobs").openConnection() as HttpURLConnection
         c.requestMethod="POST";c.doOutput=true;c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2026-03-10");c.setRequestProperty("Content-Type","application/json");c.connectTimeout=20000;c.readTimeout=120000
