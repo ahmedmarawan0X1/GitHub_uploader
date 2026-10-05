@@ -156,7 +156,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                ) { padding ->
+                ) { _ ->
                     androidx.compose.foundation.layout.Box(
                         Modifier.fillMaxSize()
                     ) {
