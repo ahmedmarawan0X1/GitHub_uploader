@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.AMOLED -> true
             }
             val t = AppStrings(this@MainActivity, language)
-            val imeVisible = ViewCompat.getRootWindowInsets(window)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            val imeVisible = ViewCompat.getRootWindowInsets(window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
 
             BackHandler(screen != Screen.HOME) {
                 screen = when (screen) {
