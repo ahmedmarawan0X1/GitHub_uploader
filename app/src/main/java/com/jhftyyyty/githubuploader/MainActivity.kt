@@ -59,7 +59,7 @@ class MainActivity : ComponentActivity() {
             incoming.data?.let(::add)
             incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(::add)
             incoming.clipData?.let { clip ->
-                for (i in 0 until clip.itemCount) clip.itemAt(i).uri?.let(::add)
+                for (i in 0 until clip.itemCount) clip.getItemAt(i).uri?.let(::add)
             }
         }
         candidates.firstOrNull(::isZipUri)?.let { acceptZip(it) }
