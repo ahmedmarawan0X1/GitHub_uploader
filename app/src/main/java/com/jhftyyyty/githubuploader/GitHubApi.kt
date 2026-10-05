@@ -91,7 +91,7 @@ internal object GitHubApi {
             }
         }
         val remoteOnly = if (mode == UploadMode.EXISTING) {
-            remote.keys.count { it !in seen && it != ".githubuploaderignore" }
+            remote.entries.count { it.value.type == "blob" && it.key !in seen && it.key != ".githubuploaderignore" }
         } else 0
         return UploadReview(files, additions, modified, unchanged, ignoredCount, remoteOnly, totalBytes)
     }
@@ -162,7 +162,9 @@ internal object GitHubApi {
     suspend fun downloadRepository(token:String,repo:RepoInfo,out:File,progress:suspend (Long,Long)->Unit){
         val c=URL(API+"/repos/"+enc(repo.owner)+"/"+enc(repo.name)+"/zipball/"+enc(repo.defaultBranch)).openConnection() as HttpURLConnection
         c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.connectTimeout=20000;c.readTimeout=120000
-        check(c.responseCode in 200..299){"Download failed: "+c.responseCode}
+        val code = c.responseCode
+        val body = (if(code in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText()}.orEmpty()
+        if(code !in 200..299) checkOk(R(code, body), "Download failed")
         val total=c.contentLengthLong;var done=0L
         c.inputStream.use{input->out.outputStream().use{output->val b=ByteArray(64*1024);while(true){val n=input.read(b);if(n<0)break;output.write(b,0,n);done+=n;progress(done,total)}}};c.disconnect()
     }
