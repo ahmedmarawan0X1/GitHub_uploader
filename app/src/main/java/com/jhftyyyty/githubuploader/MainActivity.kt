@@ -1,118 +1,70 @@
 package com.jhftyyyty.githubuploader
 
+import com.jhftyyyty.githubuploader.core.*
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Base64
-import android.view.View
-import android.view.Window
-import androidx.activity.compose.BackHandler
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import androidx.documentfile.provider.DocumentFile
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.workDataOf
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.ByteArrayOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
-import java.util.zip.ZipInputStream
-
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 class MainActivity : ComponentActivity() {
     private var selectedUri by mutableStateOf<Uri?>(null)
     private var selectedName by mutableStateOf("")
 
     private val picker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) acceptZipUri(uri, takePersistable = true)
+        if (uri != null) acceptZip(uri)
     }
 
     private fun isZipUri(uri: Uri): Boolean {
-        val name = runCatching {
-            DocumentFile.fromSingleUri(this, uri)?.name
-        }.getOrNull().orEmpty()
+        val name = runCatching { DocumentFile.fromSingleUri(this, uri)?.name }.getOrNull().orEmpty()
         val mime = runCatching { contentResolver.getType(uri) }.getOrNull().orEmpty().lowercase()
-        return name.lowercase().endsWith(".zip") ||
-                mime == "application/zip" ||
-                mime == "application/x-zip-compressed" ||
-                mime == "application/x-compress" ||
-                mime == "application/octet-stream"
+        return name.endsWith(".zip", true) ||
+            mime == "application/zip" ||
+            mime == "application/x-zip-compressed" ||
+            mime == "application/x-compress" ||
+            mime == "application/octet-stream"
     }
 
-    private fun acceptZipUri(uri: Uri, takePersistable: Boolean = false) {
+    private fun acceptZip(uri: Uri, takePersistable: Boolean = false) {
         if (!isZipUri(uri)) return
-
-        if (takePersistable) {
-            runCatching {
-                contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            }
+        if (takePersistable) runCatching {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-
-        val name = runCatching {
-            DocumentFile.fromSingleUri(this, uri)?.name
-        }.getOrNull().orEmpty().ifBlank {
-            uri.lastPathSegment?.substringAfterLast('/')?.ifBlank { null } ?: "project.zip"
-        }
-
+        val name = runCatching { DocumentFile.fromSingleUri(this, uri)?.name }.getOrNull()
+            .orEmpty()
+            .ifBlank { uri.lastPathSegment?.substringAfterLast('/')?.ifBlank { null } ?: "project.zip" }
         selectedUri = uri
         selectedName = name
     }
 
     private fun handleIncomingIntent(incoming: Intent?) {
         if (incoming == null) return
-
-        // File managers and share sheets can grant a temporary URI permission.
-        // Keep that permission while the app is running, but don't require it to be persistable.
-        runCatching {
-            val flags = incoming.flags and
-                    (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            if (flags != 0) grantUriPermission(packageName, incoming.data, flags)
-        }
-
-        val candidates = mutableListOf<Uri>()
-        incoming.data?.let(candidates::add)
-        incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(candidates::add)
-        if (incoming.action == Intent.ACTION_SEND_MULTIPLE) {
-            incoming.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.forEach(candidates::add)
-        }
-        incoming.clipData?.let { clip ->
-            for (i in 0 until clip.itemCount) {
-                clip.getItemAt(i).uri?.let(candidates::add)
+        val candidates = buildList {
+            incoming.data?.let(::add)
+            incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(::add)
+            incoming.clipData?.let { clip ->
+                for (i in 0 until clip.itemCount) clip.getItemAt(i).uri?.let(::add)
             }
         }
-
-        candidates.firstOrNull(::isZipUri)?.let { acceptZipUri(it) }
+        candidates.firstOrNull(::isZipUri)?.let { acceptZip(it) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -121,38 +73,52 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onDestroy() {
+        if (isFinishing) {
+            selectedUri = null
+            selectedName = ""
+        }
+        super.onDestroy()
+    }
+
+    override fun onCreate(state: Bundle?) {
         installSplashScreen()
-        super.onCreate(savedInstanceState)
+        super.onCreate(state)
         handleIncomingIntent(intent)
+        PendingUploadStore.cleanupStale(this)
+
         setContent {
             val prefs = remember { getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
             var theme by remember {
-                mutableStateOf(runCatching {
-                    ThemeMode.valueOf(prefs.getString(PREF_THEME, ThemeMode.SYSTEM.name)!!)
-                }.getOrDefault(ThemeMode.LIGHT))
+                mutableStateOf(
+                    runCatching {
+                        ThemeMode.valueOf(
+                            prefs.getString(PREF_THEME, ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
+                        )
+                    }.getOrDefault(ThemeMode.SYSTEM)
+                )
             }
             var language by remember {
-                mutableStateOf(runCatching {
-                    LanguageMode.valueOf(prefs.getString(PREF_LANGUAGE, LanguageMode.SYSTEM.name)!!)
-                }.getOrDefault(LanguageMode.SYSTEM))
+                mutableStateOf(
+                    runCatching {
+                        LanguageMode.valueOf(
+                            prefs.getString(PREF_LANGUAGE, LanguageMode.SYSTEM.name) ?: LanguageMode.SYSTEM.name
+                        )
+                    }.getOrDefault(LanguageMode.SYSTEM)
+                )
             }
-            val ar = when (language) {
-                LanguageMode.SYSTEM -> java.util.Locale.getDefault().language.equals("ar", true)
-                LanguageMode.ARABIC -> true
-                LanguageMode.ENGLISH -> false
-            }
-            val dark = when (theme) {
-                ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
-                ThemeMode.LIGHT -> false
-                ThemeMode.AMOLED -> true
-            }
-            val t = AppStrings(ar)
+            var token by remember { mutableStateOf(TokenStore(this@MainActivity).get()) }
             var screen by remember { mutableStateOf(Screen.HOME) }
             var helpOrigin by remember { mutableStateOf(Screen.HOME) }
 
-            LaunchedEffect(dark) { updateSystemBars(window, dark) }
-            BackHandler(enabled = screen != Screen.HOME) {
+            val dark = when (theme) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.AMOLED -> true
+            }
+            val t = AppStrings(this@MainActivity, language)
+
+            BackHandler(screen != Screen.HOME) {
                 screen = when (screen) {
                     Screen.HELP -> helpOrigin
                     Screen.SETTINGS -> Screen.HOME
@@ -160,532 +126,115 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            AppTheme(dark = dark) {
-                CompositionLocalProvider(LocalLayoutDirection provides if (ar) LayoutDirection.Rtl else LayoutDirection.Ltr) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
+            AppTheme(dark) {
+                SideEffect { updateSystemBars(window, dark) }
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        if (screen != Screen.HELP) {
+                            NavigationBar(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                tonalElevation = 0.dp
+                            ) {
+                                NavigationBarItem(
+                                    selected = screen == Screen.HOME,
+                                    colors = NavigationBarItemDefaults.colors(
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    onClick = { screen = Screen.HOME },
+                                    icon = { Icon(Icons.Default.Home, null) },
+                                    label = { Text(t.home) }
+                                )
+                                NavigationBarItem(
+                                    selected = screen == Screen.SETTINGS,
+                                    colors = NavigationBarItemDefaults.colors(
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    onClick = { screen = Screen.SETTINGS },
+                                    icon = { Icon(Icons.Default.Settings, null) },
+                                    label = { Text(t.settings) }
+                                )
+                                NavigationBarItem(
+                                    selected = screen == Screen.HELP,
+                                    colors = NavigationBarItemDefaults.colors(
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    onClick = {
+                                        helpOrigin = screen
+                                        screen = Screen.HELP
+                                    },
+                                    icon = { Icon(Icons.Default.HelpOutline, null) },
+                                    label = { Text(t.help) }
+                                )
+                            }
+                        }
+                    }
+                ) { paddingValues ->
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.fillMaxSize().padding(paddingValues)
                     ) {
                         when (screen) {
                             Screen.HOME -> HomeScreen(
-                                t, prefs.getString(PREF_TOKEN, "") ?: "", selectedUri, selectedName,
-                                prefs.getBoolean(PREF_AUTO_NAMING, true),
-                                { prefs.edit().putString(PREF_TOKEN, it).apply() },
-                                { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
-                                { request -> WorkManager.getInstance(this@MainActivity).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request) },
-                                { screen = Screen.SETTINGS },
-                                { helpOrigin = Screen.HOME; screen = Screen.HELP }
+                                t = t,
+                                token = token,
+                                uri = selectedUri,
+                                name = selectedName,
+                                autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
+                                pick = {
+                                    picker.launch(
+                                        arrayOf(
+                                            "application/zip",
+                                            "application/x-zip-compressed",
+                                            "application/octet-stream"
+                                        )
+                                    )
+                                },
+                                settings = { screen = Screen.SETTINGS },
+                                help = { helpOrigin = Screen.HOME; screen = Screen.HELP }
                             )
-                            Screen.SETTINGS -> SettingsScreen(
-                                t, theme, language, prefs.getBoolean(PREF_AUTO_NAMING, true),
-                                { theme = it; prefs.edit().putString(PREF_THEME, it.name).apply() },
-                                { language = it; prefs.edit().putString(PREF_LANGUAGE, it.name).apply() },
-                                { prefs.edit().putBoolean(PREF_AUTO_NAMING, it).apply() },
-                                { screen = Screen.HOME },
-                                { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
+
+                            Screen.SETTINGS -> SettingsPanel(
+                                t = t,
+                                token = token,
+                                theme = theme,
+                                language = language,
+                                autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
+                                changeToken = { value ->
+                                    token = value
+                                    TokenStore(this@MainActivity).save(value)
+                                },
+                                changeTheme = { value ->
+                                    theme = value
+                                    prefs.edit().putString(PREF_THEME, value.name).apply()
+                                },
+                                changeLanguage = { value ->
+                                    language = value
+                                    prefs.edit().putString(PREF_LANGUAGE, value.name).apply()
+                                },
+                                changeAutoNaming = { value ->
+                                    prefs.edit().putBoolean(PREF_AUTO_NAMING, value).apply()
+                                },
+                                back = { screen = Screen.HOME },
+                                help = { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
                             )
+
                             Screen.HELP -> HelpScreen(t) { screen = helpOrigin }
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun HomeScreen(
-    t: AppStrings, tokenPref: String, selectedUri: Uri?, selectedName: String, autoNaming: Boolean,
-    saveToken: (String) -> Unit, pickZip: () -> Unit, enqueueUpload: (androidx.work.OneTimeWorkRequest) -> Unit, openSettings: () -> Unit, openHelp: () -> Unit
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var token by remember(tokenPref) { mutableStateOf(tokenPref) }
-    var repoName by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var privateRepo by remember { mutableStateOf(true) }
-    var mode by remember { mutableStateOf(UploadMode.NEW) }
-    var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
-    var selectedRepo by remember { mutableStateOf<RepoInfo?>(null) }
-    var loading by remember { mutableStateOf(false) }
-    var preparing by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("") }
-    var statusSuccess by remember { mutableStateOf<Boolean?>(null) }
-    var resultUrl by remember { mutableStateOf("") }
-    var workProgress by remember { mutableStateOf(0f) }
-    var progressText by remember { mutableStateOf("") }
-    var uploading by remember { mutableStateOf(false) }
-
-    LaunchedEffect(selectedName, autoNaming, mode) {
-        if (autoNaming && mode == UploadMode.NEW && selectedName.isNotBlank()) {
-            repoName = selectedName.substringBefore(".").ifBlank { selectedName.substringBeforeLast(".").ifBlank { selectedName } }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        val wm = WorkManager.getInstance(context)
-        while (true) {
-            val info = withContext(Dispatchers.IO) { wm.getWorkInfosForUniqueWork(WORK_NAME).get().firstOrNull() }
-            if (info != null) {
-                uploading = info.state == androidx.work.WorkInfo.State.RUNNING || info.state == androidx.work.WorkInfo.State.ENQUEUED || preparing
-                val done = info.progress.getInt(UploadWorker.KEY_DONE, 0)
-                val total = info.progress.getInt(UploadWorker.KEY_TOTAL, 0)
-                workProgress = if (total > 0) done.toFloat() / total else 0f
-                progressText = info.progress.getString(UploadWorker.KEY_TEXT).orEmpty()
-                when (info.state) {
-                    androidx.work.WorkInfo.State.SUCCEEDED -> {
-                        status = t.success
-                        statusSuccess = true
-                        resultUrl = info.outputData.getString(UploadWorker.KEY_RESULT_URL).orEmpty()
-                        preparing = false
-                    }
-                    androidx.work.WorkInfo.State.FAILED -> {
-                        status = "${t.error}: ${info.outputData.getString(UploadWorker.KEY_ERROR).orEmpty()}"
-                        statusSuccess = false
-                        resultUrl = ""
-                        preparing = false
-                    }
-                    androidx.work.WorkInfo.State.CANCELLED -> {
-                        status = if (t.ar) "تم إلغاء الرفع" else "Upload cancelled"
-                        statusSuccess = false
-                        preparing = false
-                    }
-                    else -> Unit
-                }
-            }
-            kotlinx.coroutines.delay(700)
-        }
-    }
-    var showToken by remember { mutableStateOf(false) }
-
-    Column(
-        Modifier.fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // الهيدر ده مقصود يفضل LTR حتى لو لغة التطبيق عربية.
-        // كده عنوان التطبيق ومكان زر الإعدادات يفضلوا بنفس توزيع الواجهة الإنجليزية.
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-            Box(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(end = 48.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        t.app,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        t.subtitle,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                IconButton(
-                    onClick = openSettings,
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
-                    Icon(Icons.Default.Settings, t.settings)
-                }
-            }
-        }
-
-        Text(t.accountSection, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
-        OutlinedTextField(
-            value = token, onValueChange = { token = it; saveToken(it) },
-            modifier = Modifier.fillMaxWidth(), label = { Text(t.token) }, singleLine = true,
-            visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = { TextButton({ showToken = !showToken }) { Text(if (showToken) t.hide else t.show) } }
-        )
-
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            FilledTonalButton(
-                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TOKEN_URL))) },
-                modifier = Modifier.weight(1f)
-            ) { Text(t.newToken) }
-            Spacer(Modifier.width(8.dp))
-            FilledTonalIconButton(onClick = openHelp) {
-                Text("?", fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Text(t.operationSection, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            FilterChip(mode == UploadMode.NEW, { mode = UploadMode.NEW }, label = { Text(t.createRepo) }, Modifier.weight(1f))
-            FilterChip(mode == UploadMode.EXISTING, { mode = UploadMode.EXISTING }, label = { Text(t.updateRepo) }, Modifier.weight(1f))
-        }
-
-        if (mode == UploadMode.NEW) {
-            OutlinedTextField(repoName, { repoName = it }, Modifier.fillMaxWidth(), label = { Text(t.repoName) }, singleLine = true)
-            OutlinedTextField(description, { description = it }, Modifier.fillMaxWidth(), label = { Text(t.description) })
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(privateRepo, { privateRepo = it })
-                Spacer(Modifier.width(8.dp))
-                Text(if (privateRepo) t.privateLabel else t.publicLabel)
-            }
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text(t.existing, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                IconButton(
-                    enabled = token.isNotBlank() && !loading,
-                    onClick = {
-                        loading = true
-                        scope.launch {
-                            try {
-                                repos = withContext(Dispatchers.IO) { GitHubApi.listRepositories(token.trim()) }
-                                status = if (t.ar) "تم تحميل ${repos.size} مستودع" else "Loaded ${repos.size} repositories"
-                                statusSuccess = true
-                            } catch (e: Exception) {
-                                status = "${t.error}: ${e.message}"
-                                statusSuccess = false
-                            } finally { loading = false }
-                        }
-                    }
-                ) { Icon(Icons.Default.Refresh, t.refresh) }
-            }
-
-            if (repos.isNotEmpty()) {
-                var expanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(expanded, { expanded = !expanded }) {
-                    OutlinedTextField(
-                        selectedRepo?.fullName ?: "", {}, Modifier.fillMaxWidth().menuAnchor(),
-                        readOnly = true, label = { Text(t.chooseRepo) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) }
-                    )
-                    ExposedDropdownMenu(expanded, { expanded = false }) {
-                        repos.forEach { repo ->
-                            DropdownMenuItem({ Text(repo.fullName) }, { selectedRepo = repo; expanded = false })
-                        }
-                    }
-                }
-            } else {
-                Text(t.refreshHint, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-
-        Text(t.fileSection, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        OutlinedButton(onClick = pickZip, enabled = !uploading, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.CloudUpload, null)
-            Spacer(Modifier.width(8.dp))
-            Text(if (selectedName.isBlank()) t.chooseZip else selectedName)
-        }
-
-        if (selectedName.isNotBlank()) Text("${t.selected}: $selectedName", style = MaterialTheme.typography.bodySmall)
-
-        Button(
-            enabled = !uploading && token.isNotBlank() && selectedUri != null &&
-                    ((mode == UploadMode.NEW && repoName.isNotBlank()) || (mode == UploadMode.EXISTING && selectedRepo != null)),
-            onClick = {
-                status = ""; statusSuccess = null; resultUrl = ""; progressText = ""; workProgress = 0f
-                saveToken(token)
-                preparing = true
-                scope.launch {
-                    try {
-                        val localZip = withContext(Dispatchers.IO) {
-                            val dir = java.io.File(context.filesDir, "pending_uploads").apply { mkdirs() }
-                            val file = java.io.File(dir, "upload_${System.currentTimeMillis()}.zip")
-                            context.contentResolver.openInputStream(selectedUri!!)?.use { input ->
-                                file.outputStream().use { output -> input.copyTo(output) }
-                            } ?: error("Could not open ZIP file")
-                            file
-                        }
-                        val data = workDataOf(
-                            UploadWorker.KEY_FILE_PATH to localZip.absolutePath,
-                            UploadWorker.KEY_MODE to mode.name,
-                            UploadWorker.KEY_NEW_REPO to repoName.trim(),
-                            UploadWorker.KEY_DESCRIPTION to description.trim(),
-                            UploadWorker.KEY_PRIVATE to privateRepo,
-                            UploadWorker.KEY_OWNER to selectedRepo?.owner.orEmpty(),
-                            UploadWorker.KEY_REPO to selectedRepo?.name.orEmpty(),
-                            UploadWorker.KEY_FULL_NAME to selectedRepo?.fullName.orEmpty(),
-                            UploadWorker.KEY_BRANCH to selectedRepo?.defaultBranch.orEmpty()
-                        )
-                        val request = OneTimeWorkRequestBuilder<UploadWorker>().setInputData(data).build()
-                        enqueueUpload(request)
-                        preparing = false
-                    } catch (e: Exception) {
-                        preparing = false
-                        uploading = false
-                        status = "${t.error}: ${e.message}"
-                        statusSuccess = false
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text(if (uploading) t.uploading else t.execute) }
-
-        if (uploading) {
-            LinearProgressIndicator({ workProgress }, Modifier.fillMaxWidth())
-            Text(progressText.ifBlank { if (preparing) (if (t.ar) "جاري تجهيز ملف ZIP..." else "Preparing ZIP...") else "" }, style = MaterialTheme.typography.bodySmall)
-        }
-        if (status.isNotBlank()) {
-            val successColor = androidx.compose.ui.graphics.Color(0xFF2E7D32)
-            val errorColor = MaterialTheme.colorScheme.error
-            val neutralColor = MaterialTheme.colorScheme.onSurface
-            val statusColor = when (statusSuccess) {
-                true -> successColor
-                false -> errorColor
-                null -> neutralColor
-            }
-            Card(Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = when (statusSuccess) {
-                            true -> Icons.Default.CheckCircle
-                            false -> Icons.Default.Error
-                            null -> Icons.Default.Info
-                        },
-                        contentDescription = null,
-                        tint = statusColor,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = status,
-                        color = statusColor,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            if (statusSuccess == true && resultUrl.isNotBlank()) {
-                OutlinedCard(
-                    onClick = {
-                        runCatching {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(resultUrl)))
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                            Text(
-                                t.successLink,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                resultUrl,
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Text(t.openLink, style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-            }
-        }
-
-        Text(t.noShare, style = MaterialTheme.typography.bodySmall)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SettingsScreen(
-    t: AppStrings, theme: ThemeMode, language: LanguageMode, autoNaming: Boolean,
-    changeTheme: (ThemeMode) -> Unit, changeLanguage: (LanguageMode) -> Unit, changeAutoNaming: (Boolean) -> Unit,
-    back: () -> Unit, help: () -> Unit
-) {
-    val context = LocalContext.current
-    var themeDialog by remember { mutableStateOf(false) }
-    var languageDialog by remember { mutableStateOf(false) }
-
-    Column(
-        Modifier.fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp)
-    ) {
-        TopAppBar(
-            modifier = Modifier.fillMaxWidth(),
-            title = { Text(t.settings, fontWeight = FontWeight.Bold) },
-            navigationIcon = { IconButton(back) { Icon(Icons.Default.ArrowBack, t.back) } }
-        )
-        Spacer(Modifier.height(10.dp))
-
-        SettingCard(
-            Icons.Default.Tune, t.appearance,
-            when (theme) {
-                ThemeMode.SYSTEM -> t.automatic
-                ThemeMode.LIGHT -> t.light
-                ThemeMode.AMOLED -> "AMOLED"
-            }
-        ) { themeDialog = true }
-
-        SettingCard(
-            Icons.Default.Language, t.language,
-            when (language) { LanguageMode.SYSTEM -> t.device; LanguageMode.ARABIC -> t.arabic; LanguageMode.ENGLISH -> t.english }
-        ) { languageDialog = true }
-
-        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-            ListItem(
-                headlineContent = { Text(t.autoNaming, fontWeight = FontWeight.SemiBold) },
-                supportingContent = { Text(t.autoNamingSub) },
-                leadingContent = { Icon(Icons.Default.AutoAwesome, null) },
-                trailingContent = { Switch(checked = autoNaming, onCheckedChange = changeAutoNaming) }
-            )
-        }
-
-        SettingCard(Icons.Default.Link, t.projectLink, t.openProject, onClick = {
-            runCatching {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DEFAULT_PROJECT_URL)))
-            }
-        })
-
-        SettingCard(Icons.Default.HelpOutline, t.help, t.helpSub, help)
-    }
-
-    if (themeDialog) {
-        ChoiceDialog(
-            t.appearance,
-            listOf(t.automatic to ThemeMode.SYSTEM, t.light to ThemeMode.LIGHT, "AMOLED" to ThemeMode.AMOLED),
-            theme, changeTheme, { themeDialog = false }
-        )
-    }
-    if (languageDialog) {
-        ChoiceDialog(
-            t.language,
-            listOf(t.device to LanguageMode.SYSTEM, t.arabic to LanguageMode.ARABIC, t.english to LanguageMode.ENGLISH),
-            language, changeLanguage, { languageDialog = false }
-        )
-    }
-}
-
-@Composable
-private fun SettingCard(
-    icon: ImageVector,
-    title: String,
-    value: String,
-    onClick: (() -> Unit)? = null
-) {
-    if (onClick != null) {
-        Card(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-            ListItem(
-                headlineContent = { Text(title, fontWeight = FontWeight.SemiBold) },
-                supportingContent = { Text(value) },
-                leadingContent = { Icon(icon, null) },
-                trailingContent = { Icon(Icons.Default.ChevronLeft, null) }
-            )
-        }
-    } else {
-        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-            ListItem(
-                headlineContent = { Text(title, fontWeight = FontWeight.SemiBold) },
-                supportingContent = {
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                        Text(value)
-                    }
-                },
-                leadingContent = { Icon(icon, null) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun <T> ChoiceDialog(
-    title: String, options: List<Pair<String, T>>, selected: T,
-    select: (T) -> Unit, dismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = dismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true),
-        title = { Text(title) },
-        text = {
-            Column {
-                options.forEach { (label, value) ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(value == selected, { select(value) })
-                        Text(label, Modifier.weight(1f))
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(dismiss) { Text("OK") } }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun HelpScreen(t: AppStrings, back: () -> Unit) {
-    val context = LocalContext.current
-    Column(
-        Modifier.fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        TopAppBar(
-            modifier = Modifier.fillMaxWidth(),
-            title = { Text(t.help, fontWeight = FontWeight.Bold) },
-            navigationIcon = { IconButton(back) { Icon(Icons.Default.ArrowBack, t.back) } }
-        )
-
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(t.helpIntroTitle, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(t.helpIntro, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-
-        HelpSection(Icons.Default.AddCircleOutline, t.helpCreateTitle, t.helpCreate)
-        HelpSection(Icons.Default.SystemUpdate, t.helpUpdateTitle, t.helpUpdate)
-
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Key, null)
-                    Spacer(Modifier.width(10.dp))
-                    Text(t.tokenGuide, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                }
-                Text(if (t.ar) "استخدم Fine-grained Personal Access Token كلما أمكن." else "Use a Fine-grained Personal Access Token when possible.")
-                OutlinedButton(
-                    { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TOKEN_URL))) },
-                    Modifier.fillMaxWidth()
-                ) { Text(t.openToken) }
-                Text(t.fine, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(if (t.ar) "• Repository access: المستودعات المطلوبة.\n• Contents: Read and write\n• Administration: Read and write عند إنشاء مستودع جديد\n• Workflows: Read and write إذا كان ZIP يحتوي على .github/workflows\n• Metadata: Read-only" else "• Repository access: repositories you need\n• Contents: Read and write\n• Administration: Read and write when creating a repository\n• Workflows: Read and write if the ZIP contains .github/workflows\n• Metadata: Read-only")
-                Text(t.classic, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(if (t.ar) "• الصلاحية المطلوبة: repo" else "• Required scope: repo")
-            }
-        }
-
-        HelpSection(Icons.Default.AutoAwesome, t.helpAutoTitle, t.helpAuto)
-        HelpSection(Icons.Default.NotificationsActive, t.helpProgressTitle, t.helpProgress)
-
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(t.security, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(t.noShare, style = MaterialTheme.typography.bodyMedium)
-                Text(t.helpBack, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-    }
-}
-
-@Composable
-private fun HelpSection(icon: ImageVector, title: String, text: String) {
-    Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.Top) {
-            Icon(icon, null, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

@@ -1,77 +1,39 @@
-# GitHub uploader
+# GitHub uploader 2.0
 
-## 🇪🇬 شرح التطبيق بالعربية
+Android app for managing GitHub repositories directly from a phone.
 
-**GitHub uploader** هو تطبيق أندرويد مخصص لرفع مشاريع **GitHub** من الهاتف مباشرةً باستخدام ملف **ZIP**.
+## What changed in V2
 
-فكرة التطبيق بسيطة: بدل ما تفك ضغط المشروع وتنقل ملفاته إلى GitHub يدويًا، تختار ملف المشروع المضغوط من الهاتف، تدخل بيانات الوصول إلى حساب GitHub، ثم تختار إذا كنت تريد إنشاء مستودع جديد أو تحديث مستودع موجود.
+- Create repositories from ZIP files.
+- Update an existing repository using Git SHA change detection.
+- Resume interrupted uploads, cancel active uploads, and upload changed blobs in parallel.
+- Download a repository branch as a ZIP.
+- Changed-file detection using Git blob SHA, so unchanged files are skipped.
+- ZIP processing uses temporary files and bounded buffers instead of keeping the whole project in RAM.
+- Background WorkManager jobs with progress notifications.
+- GitHub token storage is encrypted with Android Keystore.
+- Manual Personal Access Token is the only authentication flow.
+- Cleaner Material 3 interface with Arabic/English resources and no decorative emoji labels.
+- UI screens are separated from the Activity, app constants are centralized, and pending upload files are managed in one place.
+- Release signing credentials are no longer stored in the repository.
 
-### طريقة استخدام التطبيق
+## Authentication
 
-1. افتح التطبيق وأدخل **GitHub Personal Access Token** الخاص بك.
-2. اختر ملف المشروع بصيغة **ZIP** من ذاكرة الهاتف.
-3. حدد طريقة التعامل مع المشروع:
-   - **إنشاء Repository جديد:** اكتب اسم المستودع والوصف وحدد إذا كان المستودع خاصًا أو عامًا.
-   - **تحديث Repository:** اختر المستودع الذي تريد تحديثه من المستودعات المرتبطة بحسابك.
-4. اضغط على زر تنفيذ عملية الرفع.
-5. أثناء العملية يعرض التطبيق حالة الرفع والتقدم.
-6. بعد انتهاء العملية، يظهر رابط المستودع الذي تم التعامل معه، ويمكن الضغط عليه لفتحه مباشرةً في متصفح الهاتف.
+### Personal Access Token
 
-### الوصول إلى GitHub
+This is the simplest and most reliable option for direct API uploads. Use a Fine-grained token with access to the repositories you need and repository Contents permission.
 
-التطبيق يتعامل مع GitHub من خلال **GitHub API**، لذلك يحتاج إلى **Personal Access Token** يسمح له بالوصول إلى المستودعات المطلوبة.
+## Large files
 
-يمكن إنشاء الـ Token من GitHub، ثم وضعه في خانة الـ Token داخل التطبيق. وفي حالة استخدام **Fine-grained Token** يجب إعطاؤه الصلاحيات المناسبة للمستودعات التي تريد التعامل معها، خصوصًا صلاحية قراءة وكتابة محتوى المستودعات.
+GitHub's Git database has file-size limits. The app rejects individual ZIP entries above 90 MB and processes ZIP entries in bounded parallel batches to keep memory usage bounded. For projects containing very large assets, Git LFS or another artifact storage strategy is recommended.
 
-### إنشاء مشروع جديد أو تحديث مشروع موجود
 
-عند إنشاء Repository جديد، يقوم التطبيق بإنشاء المستودع ثم يرفع محتويات ملف ZIP إليه.
+## CI
 
-وعند تحديث Repository، يختار التطبيق المستودع المطلوب ثم يرفع محتويات ملف ZIP إليه لتحديث ملفات المشروع الموجودة على GitHub.
+The GitHub Actions workflow builds and lints the release variant. Signing is intentionally external to the repository; configure secure CI signing variables if you want signed release artifacts.
 
-### رابط المشروع
+## Security
 
-الرابط الافتراضي للمشروع هو:
+The old committed release keystore and hardcoded signing credentials were removed from the V2 branch. If that key was ever used for a distributed application, treat it as compromised and rotate the signing strategy as appropriate.
 
-`https://github.com/jhftyyyty/GitHub_uploader`
-
-رابط المشروع ثابت داخل التطبيق ويظهر في الإعدادات للرجوع إليه.
-
----
-
-## 🇬🇧 App Description in English
-
-**GitHub uploader** is an Android application designed to upload **GitHub projects** directly from a phone using a **ZIP** project file.
-
-The idea is simple: instead of extracting a project and manually moving its files to GitHub, you select the ZIP file from your device, provide your GitHub access credentials, and then choose whether you want to create a new repository or update an existing one.
-
-### How to Use the App
-
-1. Open the app and enter your **GitHub Personal Access Token**.
-2. Select the project **ZIP** file from your phone.
-3. Choose how you want to handle the project:
-   - **Create a new Repository:** enter the repository name and description, then choose whether it should be private or public.
-   - **Update an existing Repository:** select the repository you want to update from the repositories available in your GitHub account.
-4. Press the button to start the upload operation.
-5. The app displays the upload status and progress while the operation is running.
-6. When the operation is completed, the repository URL is displayed and can be tapped to open it directly in the phone's web browser.
-
-### GitHub Access
-
-The application communicates with GitHub through the **GitHub API**, so it requires a **Personal Access Token** with access to the repositories you want to use.
-
-Create the token through GitHub and enter it in the Token field in the app. When using a **Fine-grained Token**, make sure it has the required permissions for the selected repositories, especially permission to read and write repository contents.
-
-### Creating or Updating a Project
-
-When creating a new Repository, the app creates the repository and then uploads the contents of the selected ZIP file to it.
-
-When updating an existing Repository, the app lets you select the required repository and then uploads the ZIP project contents to update the project files on GitHub.
-
-### Project Link
-
-The default project link is:
-
-`https://github.com/jhftyyyty/GitHub_uploader`
-
-The project link is fixed in the app and is shown in Settings for reference.
+Project: https://github.com/ahmedmarawan0X1/GitHub_uploader

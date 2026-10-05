@@ -1,37 +1,40 @@
-name: Build Android Release APK
-
+name: Android CI
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-
-      - name: Download Gradle
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.9"
+      - name: Build and lint
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip
-          unzip -q gradle-8.9-bin.zip
-
-      - name: Build signed Release APK
-        run: ./gradle-8.9/bin/gradle assembleRelease --no-daemon
-
-      - name: Verify APK signature
+          gradle assembleRelease lintRelease --no-daemon
+      - name: Verify APK
         run: |
           APK=$(find app/build/outputs/apk/release -name "*.apk" -print -quit)
-          test -n "$APK" || { echo "Release APK not found"; exit 1; }
-          $ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner verify --verbose "$APK"
-
+          test -n "$APK"
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          sha256sum "$APK" | tee app/build/outputs/apk/release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: GitHubZipUploader-release-signed
-          path: app/build/outputs/apk/release/*.apk
+          name: GitHubUploader-release
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/SHA256SUMS.txt
           if-no-files-found: error
