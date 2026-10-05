@@ -119,6 +119,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.AMOLED -> true
             }
             val t = AppStrings(this@MainActivity, language)
+            val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
             BackHandler(screen != Screen.HOME) {
                 screen = when (screen) {
