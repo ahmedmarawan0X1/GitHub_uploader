@@ -75,11 +75,11 @@ class MainActivity : ComponentActivity() {
     private fun handleIncomingIntent(incoming: Intent?) {
         if (incoming == null) return
 
-        val flags = incoming.flags and (
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        )
-        if (flags != 0 && incoming.data != null) {
-            runCatching { grantUriPermission(packageName, incoming.data, flags) }
+        val uri = incoming.data
+        if (uri != null && (incoming.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0) {
+            runCatching {
+                grantUriPermission(packageName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
         }
 
         val candidates = mutableListOf<Uri>()
