@@ -7,8 +7,8 @@ android{
   applicationId="com.jhftyyyty.githubuploader"
   minSdk=26
   targetSdk=35
-  versionCode=2
-  versionName="2.0"
+  versionCode=3
+  versionName="2.1.0"
  }
  buildFeatures{buildConfig=true}
  buildTypes{getByName("release"){isMinifyEnabled=true;isShrinkResources=true;proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro")}}
