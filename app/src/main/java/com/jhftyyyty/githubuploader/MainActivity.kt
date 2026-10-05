@@ -194,6 +194,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 },
                                 settings = { screen = Screen.SETTINGS },
+                                imeVisible = imeVisible,
                             )
 
                             Screen.SETTINGS -> SettingsPanel(
