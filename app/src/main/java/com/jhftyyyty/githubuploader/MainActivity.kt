@@ -85,9 +85,6 @@ class MainActivity : ComponentActivity() {
         val candidates = mutableListOf<Uri>()
         incoming.data?.let(candidates::add)
         incoming.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let(candidates::add)
-        if (incoming.action == Intent.ACTION_SEND_MULTIPLE) {
-            incoming.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)?.forEach(candidates::add)
-        }
         incoming.clipData?.let { clip ->
             for (i in 0 until clip.itemCount) {
                 clip.getItemAt(i).uri?.let(candidates::add)
