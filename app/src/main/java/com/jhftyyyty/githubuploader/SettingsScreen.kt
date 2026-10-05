@@ -72,7 +72,7 @@ internal fun SettingsPanel(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                SettingsSectionLabel(Icons.Default.Key, t.token)
+                SectionHeader(Icons.Default.Key, t.token)
 
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
@@ -145,14 +145,14 @@ internal fun SettingsPanel(
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.OpenInNew, null)
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, null)
                             Spacer(Modifier.width(8.dp))
                             Text(t.createToken)
                         }
                     }
                 }
 
-                SettingsSectionLabel(Icons.Default.Tune, t.theme)
+                SectionHeader(Icons.Default.Tune, t.theme)
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.extraLarge,
@@ -205,18 +205,19 @@ internal fun SettingsPanel(
                     }
                 }
 
-                SettingsSectionLabel(Icons.Default.MoreHoriz, t.help)
-                SettingRow(Icons.Default.Link, t.projectLink, t.openProject) {
-                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DEFAULT_PROJECT_URL))) }
-                }
-
-                OutlinedButton(
-                    onClick = help,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                SectionHeader(Icons.Default.MoreHoriz, t.help)
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                 ) {
-                    Icon(Icons.Default.HelpOutline, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(t.help)
+                    Column(Modifier.padding(6.dp)) {
+                        SettingRow(Icons.Default.Link, t.projectLink, t.openProject) {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DEFAULT_PROJECT_URL))) }
+                        }
+                        SettingRow(Icons.Default.HelpOutline, t.help, t.help6, help)
+                    }
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -226,7 +227,7 @@ internal fun SettingsPanel(
 }
 
 @Composable
-private fun SettingsSectionLabel(icon: ImageVector, title: String) {
+private fun SectionHeader(icon: ImageVector, title: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(8.dp))
@@ -249,13 +250,18 @@ private fun TokenStatus(text: String, success: Boolean) {
 
 @Composable
 private fun SettingRow(icon: ImageVector, title: String, sub: String, onClick: () -> Unit) {
-    OutlinedCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null)
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold)
-                Text(sub, style = MaterialTheme.typography.bodySmall)
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -264,15 +270,16 @@ private fun SettingRow(icon: ImageVector, title: String, sub: String, onClick: (
 
 @Composable
 private fun SettingToggleRow(icon: ImageVector, title: String, sub: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null)
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.SemiBold)
-                Text(sub, style = MaterialTheme.typography.bodySmall)
-            }
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
