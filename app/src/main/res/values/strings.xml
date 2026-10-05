@@ -15,7 +15,11 @@
 <string name="operation">Operation</string>
 <string name="new_repo">New repository</string>
 <string name="existing">Upload to repository</string>
+<string name="operation_new">New</string>
+<string name="operation_upload">Upload</string>
 <string name="download">Download</string>
+<string name="private_repo_sub">Only you can access it</string>
+<string name="public_repo_sub">Anyone can view it</string>
 <string name="repo_name">Repository name</string>
 <string name="description">Description</string>
 <string name="private_repo">Private</string>
