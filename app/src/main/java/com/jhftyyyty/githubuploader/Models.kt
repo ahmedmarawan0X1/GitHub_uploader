@@ -16,3 +16,5 @@ internal data class GitHubUser(
     val name: String?,
     val avatarUrl: String?
 )
+
+internal data class UploadReview(val total:Int,val added:Int,val changed:Int,val same:Int,val skipped:Int,val kept:Int,val bytes:Long)
