@@ -156,9 +156,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                ) { _ ->
+                ) { paddingValues ->
                     androidx.compose.foundation.layout.Box(
-                        Modifier.fillMaxSize()
+                        Modifier.fillMaxSize().padding(paddingValues)
                     ) {
                         when (screen) {
                             Screen.HOME -> HomeScreen(
