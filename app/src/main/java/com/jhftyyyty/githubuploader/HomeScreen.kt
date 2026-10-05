@@ -138,10 +138,10 @@ internal fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(2.dp))
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     t.app,
@@ -156,53 +156,71 @@ internal fun HomeScreen(
                 )
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(14.dp))
 
             ElevatedCard(
-                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth()
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraLarge
             ) {
-                Column(
-                    Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                Row(
+                    Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.AccountCircle,
-                            null,
-                            Modifier.size(34.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
+                    Icon(
+                        Icons.Default.AccountCircle,
+                        null,
+                        Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            account ?: t.notConnected,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
                         )
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(account ?: t.notConnected, fontWeight = FontWeight.SemiBold)
-                            Text(t.authHint, style = MaterialTheme.typography.bodySmall)
-                        }
-                        if (account != null) {
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary
+                        if (token.isBlank()) {
+                            Text(
+                                t.authHint,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            TextButton(
+                                onClick = settings,
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(t.noToken)
+                            }
                         }
                     }
-
-                    TextButton(onClick = settings) {
-                        Text(if (token.isBlank()) t.noToken else t.settings)
+                    if (account != null) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            null,
+                            Modifier.padding(top = 2.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
 
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                shape = MaterialTheme.shapes.extraLarge
             ) {
                 Column(
-                    Modifier.padding(14.dp),
+                    Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
@@ -211,14 +229,22 @@ internal fun HomeScreen(
                         fontWeight = FontWeight.Bold
                     )
                     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        val labels = listOf(t.newRepo, t.existing, t.download)
+                        val labels = listOf(t.operationNew, t.operationUpload, t.download)
+                        val icons = listOf(
+                            Icons.Default.CreateNewFolder,
+                            Icons.Default.CloudUpload,
+                            Icons.Default.Download
+                        )
                         val modes = listOf(UploadMode.NEW, UploadMode.EXISTING, UploadMode.DOWNLOAD)
                         modes.forEachIndexed { index, item ->
                             SegmentedButton(
                                 selected = mode == item,
                                 onClick = { if (!busy) { mode = item; clearFeedback() } },
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                icon = {
+                                    Icon(icons[index], null, Modifier.size(18.dp))
+                                }
                             ) {
                                 Text(labels[index], maxLines = 1)
                             }
@@ -229,40 +255,76 @@ internal fun HomeScreen(
 
             when (mode) {
                 UploadMode.NEW -> {
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        repoName,
-                        { repoName = it },
-                        Modifier.fillMaxWidth(),
-                        label = { Text(t.repoName) },
-                        singleLine = true
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        description,
-                        { description = it },
-                        Modifier.fillMaxWidth(),
-                        label = { Text(t.description) }
-                    )
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                    Spacer(Modifier.height(10.dp))
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        shape = MaterialTheme.shapes.extraLarge
                     ) {
-                        Switch(privateRepo, { privateRepo = it })
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (privateRepo) t.privateRepo else t.publicRepo)
+                        Column(
+                            Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                repoName,
+                                { repoName = it },
+                                Modifier.fillMaxWidth(),
+                                label = { Text(t.repoName) },
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                description,
+                                { description = it },
+                                Modifier.fillMaxWidth(),
+                                label = { Text(t.description) },
+                                minLines = 2,
+                                maxLines = 3
+                            )
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        if (privateRepo) t.privateRepo else t.publicRepo,
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Text(
+                                        if (privateRepo) t.privateRepoSub else t.publicRepoSub,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(privateRepo, { privateRepo = it })
+                            }
+                        }
                     }
                 }
 
                 UploadMode.EXISTING, UploadMode.DOWNLOAD -> {
-                    Spacer(Modifier.height(12.dp))
-                    Text(t.repository, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-
-                    Spacer(Modifier.height(6.dp))
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { if (!busy && repos.isNotEmpty()) expanded = !expanded }
+                    Spacer(Modifier.height(10.dp))
+                    ElevatedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        shape = MaterialTheme.shapes.extraLarge
                     ) {
+                        Column(
+                            Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                t.repository,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = { if (!busy && repos.isNotEmpty()) expanded = !expanded }
+                            ) {
                         OutlinedTextField(
                             value = selected?.fullName ?: t.noRepositories,
                             onValueChange = {},
@@ -292,49 +354,61 @@ internal fun HomeScreen(
                                 )
                             }
                         }
-                    }
-
-                    Spacer(Modifier.height(6.dp))
-                    OutlinedButton(
-                        enabled = token.isNotBlank() && !busy,
-                        onClick = {
-                            scope.launch {
-                                runCatching {
-                                    repos = withContext(Dispatchers.IO) { GitHubApi.listRepositories(token) }
-                                    account = withContext(Dispatchers.IO) { GitHubApi.currentUser(token).login }
-                                }.onFailure {
-                                    message = GitHubApi.friendlyError(it.message ?: t.error)
-                                    ok = false
-                                }
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Refresh, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text(t.refreshRepositories)
-                    }
 
+                            OutlinedButton(
+                                enabled = token.isNotBlank() && !busy,
+                                onClick = {
+                                    scope.launch {
+                                        runCatching {
+                                            repos = withContext(Dispatchers.IO) { GitHubApi.listRepositories(token) }
+                                            account = withContext(Dispatchers.IO) { GitHubApi.currentUser(token).login }
+                                        }.onFailure {
+                                            message = GitHubApi.friendlyError(it.message ?: t.error)
+                                            ok = false
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Refresh, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(t.refreshRepositories)
+                            }
+                        }
+                    }
                 }
-            }
 
             if (mode != UploadMode.DOWNLOAD) {
                 Spacer(Modifier.height(12.dp))
                 ElevatedCard(
-                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.fillMaxWidth()
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge
                 ) {
                     Row(
-                        Modifier.padding(14.dp),
+                        Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.FolderZip, null, Modifier.size(30.dp))
+                        Icon(
+                            Icons.Default.FolderZip,
+                            null,
+                            Modifier.size(30.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(t.source, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                t.source,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
                             Text(
                                 if (name.isBlank()) t.noFile else name,
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1
                             )
                         }
                         OutlinedButton(enabled = !busy, onClick = pick) {
