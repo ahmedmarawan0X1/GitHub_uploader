@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
@@ -35,7 +35,7 @@ internal fun HelpScreen(t: AppStrings, back: () -> Unit) {
                 },
                 navigationIcon = {
                     IconButton(onClick = back) {
-                        Icon(Icons.Default.ArrowBack, t.back)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, t.back)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -55,7 +55,8 @@ internal fun HelpScreen(t: AppStrings, back: () -> Unit) {
                     shape = MaterialTheme.shapes.extraLarge,
                     colors = CardDefaults.elevatedCardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                    ),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
                         Modifier.padding(18.dp),
@@ -94,9 +95,13 @@ internal fun HelpScreen(t: AppStrings, back: () -> Unit) {
 
 @Composable
 private fun HelpCard(text: String) {
-    OutlinedCard(
+    ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             Modifier.padding(16.dp),
