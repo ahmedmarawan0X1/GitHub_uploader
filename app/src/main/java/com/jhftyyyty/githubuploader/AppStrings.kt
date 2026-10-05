@@ -70,4 +70,5 @@ internal class AppStrings(val ar: Boolean) {
     val help9 = if (ar) "الملفات الكبيرة تُعالج على دفعات لتقليل استهلاك الذاكرة." else "Large files are processed in bounded chunks."
     val help10 = if (ar) "يمكنك تفعيل التسمية التلقائية من الإعدادات لاستخدام اسم ملف ZIP عند إنشاء مستودع جديد." else "Enable auto-naming in Settings to use the ZIP filename when creating a new repository."
     val help11 = if (ar) "يمكن فتح التطبيق مباشرةً من قائمة المشاركة في مدير الملفات لاختيار ملف ZIP دون البحث عنه مرة أخرى داخل التطبيق." else "You can open the app from a file manager share sheet to select a ZIP without browsing for it again."
+    val help12 = if (ar) "صلاحيات التوكن المطلوبة: Contents = Read and write، وMetadata = Read-only، ولإنشاء مستودعات جديدة فعّل Administration = Read and write، وWorkflows = Read and write إذا كنت تريد أن يتمكن التطبيق من تعديل ملفات GitHub Actions داخل المستودع." else "Required token permissions: Contents = Read and write, Metadata = Read-only, Administration = Read and write for creating repositories, and Workflows = Read and write if you want the app to modify GitHub Actions files in the repository."
 }
