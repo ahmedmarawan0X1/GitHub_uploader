@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-<string name="app_name">GitHub uploader</string>
+<string name="app_name">GitHub Uploader</string>
 <string name="app">GitHub uploader</string>
 <string name="subtitle">Manage GitHub projects from your phone</string>
-<string name="token">GitHub token</string>
+<string name="token">GitHub access token</string>
 <string name="show">Show</string>
 <string name="hide">Hide</string>
-<string name="create_token">Create token</string>
-<string name="verify_token">Verify token</string>
+<string name="create_token">Create access token</string>
+<string name="verify_token">Verify access</string>
 <string name="token_valid">Token is valid</string>
 <string name="token_invalid">Token could not be verified</string>
 <string name="remove_token">Remove token</string>
 <string name="account">Account</string>
 <string name="operation">Operation</string>
 <string name="new_repo">New repository</string>
-<string name="existing">Existing repository</string>
+<string name="existing">Upload to repository</string>
 <string name="download">Download</string>
 <string name="repo_name">Repository name</string>
 <string name="description">Description</string>
@@ -23,10 +23,10 @@
 <string name="repository">Repository</string>
 <string name="choose_repo">Choose repository</string>
 <string name="refresh_repositories">Refresh repositories</string>
-<string name="no_repositories">Refresh to choose a repository</string>
+<string name="no_repositories">Refresh the list to choose a repository.</string>
 <string name="source">Project source</string>
 <string name="choose_zip">Choose ZIP</string>
-<string name="no_file">No file selected</string>
+<string name="no_file">No ZIP file selected.</string>
 <string name="review">Review changes</string>
 <string name="start">Start upload</string>
 <string name="working">Working…</string>
@@ -58,19 +58,19 @@
 <string name="arabic">Arabic</string>
 <string name="english">English</string>
 <string name="not_connected">Token not configured</string>
-<string name="auth_hint">Add your GitHub token from Settings to start.</string>
-<string name="no_token">Add a GitHub token in Settings before starting.</string>
+<string name="auth_hint">Add your GitHub access token in Settings to start.</string>
+<string name="no_token">Add a GitHub access token in Settings before starting.</string>
 <string name="preview_title">Review changes</string>
 <string name="files">Files</string>
 <string name="added">Added</string>
 <string name="modified">Modified</string>
 <string name="unchanged">Unchanged</string>
 <string name="ignored">Ignored</string>
-<string name="preserved">Remote-only preserved</string>
+<string name="preserved">Remote-only files kept</string>
 <string name="size">Project size</string>
 <string name="start_now">Start now</string>
 <string name="close">Close</string>
-<string name="ignore_file">Uploader ignore file</string>
+<string name="ignore_file">Uploader ignore rules</string>
 <string name="help1">Create a token from Developer settings, then Personal access tokens, Fine-grained tokens, and Generate new token.</string>
 <string name="help2">Upload permissions: Contents = Read and write and Metadata = Read-only. For new repositories use Administration = Read and write.</string>
 <string name="help3">Limit the token to the repositories it needs. Never share it; revoke it from GitHub when necessary.</string>
@@ -82,4 +82,13 @@
 <string name="help9">Auto-naming uses the ZIP filename as the new repository name.</string>
 <string name="help10">Download saves a ZIP copy of the selected repository branch.</string>
 <string name="help11">Add an ignore file to the ZIP to exclude files or folders from upload.</string>
+    <string name="token_placeholder">ghp_…</string>
+    <string name="uploading_project">Uploading project</string>
+    <string name="cancel_notification">Cancel</string>
+    <string name="upload_channel">GitHub uploads</string>
+    <string name="upload_completed">Upload completed</string>
+    <string name="downloading">Downloading project</string>
+    <string name="download_channel">GitHub downloads</string>
+    <string name="download_error">Download could not be completed</string>
+    <string name="download_saved">File saved to Download/GitHubUploader</string>
 </resources>
