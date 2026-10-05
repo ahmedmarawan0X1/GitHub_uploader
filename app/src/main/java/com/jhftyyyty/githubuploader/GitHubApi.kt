@@ -65,7 +65,7 @@ internal object GitHubApi {
         progress(total,total,"Completed • "+changed+" changed");return target.url
     }
 
-    fun downloadRepository(token:String,repo:RepoInfo,out:File,progress:(Long,Long)->Unit){
+    suspend fun downloadRepository(token:String,repo:RepoInfo,out:File,progress:suspend (Long,Long)->Unit){
         val c=URL(API+"/repos/"+enc(repo.owner)+"/"+enc(repo.name)+"/zipball/"+enc(repo.defaultBranch)).openConnection() as HttpURLConnection
         c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.connectTimeout=20000;c.readTimeout=120000
         check(c.responseCode in 200..299){"Download failed: "+c.responseCode}
