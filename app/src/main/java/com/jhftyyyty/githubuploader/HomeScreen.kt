@@ -378,6 +378,7 @@ internal fun HomeScreen(
                         }
                     }
                 }
+            }
 
             if (mode != UploadMode.DOWNLOAD) {
                 Spacer(Modifier.height(12.dp))
