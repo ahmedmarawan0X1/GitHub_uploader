@@ -15,7 +15,11 @@
 <string name="operation">العملية</string>
 <string name="new_repo">مستودع جديد</string>
 <string name="existing">الرفع إلى مستودع</string>
+<string name="operation_new">جديد</string>
+<string name="operation_upload">رفع</string>
 <string name="download">تنزيل</string>
+<string name="private_repo_sub">لا يمكن لأحد غيرك الوصول إليه</string>
+<string name="public_repo_sub">يمكن للجميع رؤيته</string>
 <string name="repo_name">اسم المستودع</string>
 <string name="description">الوصف</string>
 <string name="private_repo">خاص</string>
