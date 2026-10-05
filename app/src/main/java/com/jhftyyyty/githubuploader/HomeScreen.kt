@@ -528,13 +528,13 @@ internal fun HomeScreen(
             title = { Text(t.previewTitle) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PreviewRow(t.files, summary.files.toString())
-                    PreviewRow(t.added, summary.additions.toString())
-                    PreviewRow(t.modified, summary.modified.toString())
-                    PreviewRow(t.unchanged, summary.unchanged.toString())
-                    PreviewRow(t.ignored, summary.ignored.toString())
-                    if (mode == UploadMode.EXISTING) PreviewRow(t.preserved, summary.remoteOnly.toString())
-                    PreviewRow(t.size, formatBytes(summary.totalBytes))
+                    PreviewRow(t.files, summary.total.toString())
+                    PreviewRow(t.added, summary.added.toString())
+                    PreviewRow(t.modified, summary.changed.toString())
+                    PreviewRow(t.unchanged, summary.same.toString())
+                    PreviewRow(t.ignored, summary.skipped.toString())
+                    if (mode == UploadMode.EXISTING) PreviewRow(t.preserved, summary.kept.toString())
+                    PreviewRow(t.size, formatBytes(summary.bytes))
                     Text(t.help11, style = MaterialTheme.typography.bodySmall)
                 }
             },
