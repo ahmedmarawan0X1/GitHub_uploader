@@ -228,34 +228,48 @@ internal fun HomeScreen(
 
             Spacer(Modifier.height(18.dp))
 
-            Text(t.operation, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             ) {
-                OperationButton(
-                    text = t.newRepo,
-                    selected = mode == UploadMode.NEW,
-                    enabled = !busy,
-                    onClick = { mode = UploadMode.NEW; clearFeedback() },
-                    modifier = Modifier.weight(1f)
-                )
-                OperationButton(
-                    text = t.existing,
-                    selected = mode == UploadMode.EXISTING,
-                    enabled = !busy,
-                    onClick = { mode = UploadMode.EXISTING; clearFeedback() },
-                    modifier = Modifier.weight(1f)
-                )
-                OperationButton(
-                    text = t.download,
-                    selected = mode == UploadMode.DOWNLOAD,
-                    enabled = !busy,
-                    onClick = { mode = UploadMode.DOWNLOAD; clearFeedback() },
-                    modifier = Modifier.weight(1f)
-                )
+                Column(
+                    Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        t.operation,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OperationButton(
+                            text = t.newRepo,
+                            selected = mode == UploadMode.NEW,
+                            enabled = !busy,
+                            onClick = { mode = UploadMode.NEW; clearFeedback() },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OperationButton(
+                            text = t.existing,
+                            selected = mode == UploadMode.EXISTING,
+                            enabled = !busy,
+                            onClick = { mode = UploadMode.EXISTING; clearFeedback() },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OperationButton(
+                            text = t.download,
+                            selected = mode == UploadMode.DOWNLOAD,
+                            enabled = !busy,
+                            onClick = { mode = UploadMode.DOWNLOAD; clearFeedback() },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
 
             when (mode) {
