@@ -81,7 +81,7 @@
     <string name="size">Project size</string>
     <string name="no_token">Add a GitHub token in Settings before starting.</string>
     <string name="ignore_file">.githubuploaderignore</string>
-    <string name="help11">Add .githubuploaderignore to the ZIP to exclude files or folders from upload. One pattern per line; # starts a comment.</string
+    <string name="help11">Add .githubuploaderignore to the ZIP to exclude files or folders from upload. One pattern per line; # starts a comment.</string>
     <string name="verify_token">Verify token</string>
     <string name="token_valid">Token is valid</string>
     <string name="token_invalid">Token could not be verified</string>
