@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(state)
         handleIncomingIntent(intent)
+        PendingUploadStore.cleanupStale(this)
         setContent {
             val prefs = remember { getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
             var theme by remember {
