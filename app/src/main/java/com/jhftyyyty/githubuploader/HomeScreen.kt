@@ -36,7 +36,8 @@ internal fun HomeScreen(
     name: String,
     autoNaming: Boolean,
     pick: () -> Unit,
-    settings: () -> Unit
+    settings: () -> Unit,
+    imeVisible: Boolean
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -57,6 +58,7 @@ internal fun HomeScreen(
     var previewFile by remember { mutableStateOf<File?>(null) }
     var preparing by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+    var workObserved by remember { mutableStateOf(false) }
 
     LaunchedEffect(name, autoNaming, mode) {
         if (autoNaming && mode == UploadMode.NEW && name.isNotBlank()) {
@@ -126,27 +128,36 @@ internal fun HomeScreen(
                 progressText = info.progress.getString(UploadWorker.KEY_TEXT).orEmpty()
 
                 when (info.state) {
+                    WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> {
+                        workObserved = true
+                    }
                     WorkInfo.State.SUCCEEDED -> {
                         busy = false
-                        ok = true
-                        message = if (mode == UploadMode.DOWNLOAD) t.downloadDone else t.done
-                        result = if (mode == UploadMode.DOWNLOAD) {
-                            info.outputData.getString(DownloadWorker.KEY_RESULT_PATH).orEmpty()
-                        } else {
-                            info.outputData.getString(UploadWorker.KEY_RESULT_URL).orEmpty()
+                        if (workObserved) {
+                            ok = true
+                            message = if (mode == UploadMode.DOWNLOAD) t.downloadDone else t.done
+                            result = if (mode == UploadMode.DOWNLOAD) {
+                                info.outputData.getString(DownloadWorker.KEY_RESULT_PATH).orEmpty()
+                            } else {
+                                info.outputData.getString(UploadWorker.KEY_RESULT_URL).orEmpty()
+                            }
                         }
                     }
                     WorkInfo.State.FAILED -> {
                         busy = false
-                        ok = false
-                        message = info.outputData.getString(DownloadWorker.KEY_ERROR).orEmpty().ifBlank { t.error }
-                        result = ""
+                        if (workObserved) {
+                            ok = false
+                            message = info.outputData.getString(DownloadWorker.KEY_ERROR).orEmpty().ifBlank { t.error }
+                            result = ""
+                        }
                     }
                     WorkInfo.State.CANCELLED -> {
                         busy = false
-                        ok = false
-                        message = t.cancelled
-                        result = ""
+                        if (workObserved) {
+                            ok = false
+                            message = t.cancelled
+                            result = ""
+                        }
                     }
                     else -> Unit
                 }
@@ -163,7 +174,13 @@ internal fun HomeScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .safeDrawingPadding()
+                .windowInsetsPadding(
+                    if (imeVisible) {
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+                    } else {
+                        WindowInsets.safeDrawing
+                    }
+                )
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
         ) {
@@ -268,7 +285,7 @@ internal fun HomeScreen(
                         modes.forEachIndexed { index, item ->
                             SegmentedButton(
                                 selected = mode == item,
-                                onClick = { if (!busy) { mode = item; clearFeedback() } },
+                                onClick = { if (!busy) { mode = item; workObserved = false; clearFeedback() } },
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
                                 modifier = Modifier.weight(1f),
                                 icon = {
@@ -476,6 +493,7 @@ internal fun HomeScreen(
                                     DownloadWorker.KEY_FULL_NAME to selected!!.fullName,
                                     DownloadWorker.KEY_BRANCH to selected!!.defaultBranch
                                 )
+                                workObserved = true
                                 WorkManager.getInstance(context).enqueueUniqueWork(
                                     DownloadWorker.WORK_NAME,
                                     ExistingWorkPolicy.REPLACE,
@@ -647,6 +665,7 @@ internal fun HomeScreen(
                         .setConstraints(constraints)
                         .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
                         .build()
+                    workObserved = true
                     WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
                     busy = true
                     preview = null
