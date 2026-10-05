@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Base64OutputStream
 import java.io.File
 import java.io.InputStream
+import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -113,11 +114,13 @@ internal object GitHubApi {
         c.requestMethod="POST";c.doOutput=true;c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2026-03-10");c.setRequestProperty("Content-Type","application/json");c.connectTimeout=20000;c.readTimeout=120000
         val out=c.outputStream
         out.write("{\"content\":\"".toByteArray());out.flush()
-        temp.inputStream().buffered().use{input->val b64=Base64OutputStream(out,android.util.Base64.NO_WRAP);input.copyTo(b64,64*1024);b64.flush()}
+        temp.inputStream().buffered().use{input->val b64=Base64OutputStream(NonClosingOutputStream(out),android.util.Base64.NO_WRAP);input.copyTo(b64,64*1024);b64.close()}
         out.write("\",\"encoding\":\"base64\"}".toByteArray());out.flush();out.close()
         val code=c.responseCode;val body=(if(code in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText()}.orEmpty();c.disconnect()
         val r=R(code,body);checkOk(r,"Blob upload failed");return JSONObject(r.body).getString("sha")
     }
+
+    private class NonClosingOutputStream(private val delegate:OutputStream):OutputStream(){override fun write(b:Int)=delegate.write(b);override fun write(b:ByteArray,off:Int,len:Int)=delegate.write(b,off,len);override fun flush()=delegate.flush();override fun close(){flush()}}
 
     private fun safePath(raw:String):String?{val p=raw.replace('\\','/').trimStart('/');if(p.isBlank()||p.startsWith("__MACOSX/")||p.split('/').any{it==".."||it.isBlank()&&p.contains("//")})return null;return p}
     private fun ignored(p:String)=p.split('/').any{it==".git"||it=="build"||it==".gradle"||it==".idea"}||p.endsWith("local.properties")||p.endsWith(".log")
