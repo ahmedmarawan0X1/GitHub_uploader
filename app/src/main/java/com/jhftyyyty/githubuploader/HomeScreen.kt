@@ -528,12 +528,12 @@ internal fun HomeScreen(
             title = { Text(t.previewTitle) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PreviewRow(t.files, summary.files)
-                    PreviewRow(t.added, summary.additions)
-                    PreviewRow(t.modified, summary.modified)
-                    PreviewRow(t.unchanged, summary.unchanged)
-                    PreviewRow(t.ignored, summary.ignored)
-                    if (mode == UploadMode.EXISTING) PreviewRow(t.preserved, summary.remoteOnly)
+                    PreviewRow(t.files, summary.files.toString())
+                    PreviewRow(t.added, summary.additions.toString())
+                    PreviewRow(t.modified, summary.modified.toString())
+                    PreviewRow(t.unchanged, summary.unchanged.toString())
+                    PreviewRow(t.ignored, summary.ignored.toString())
+                    if (mode == UploadMode.EXISTING) PreviewRow(t.preserved, summary.remoteOnly.toString())
                     PreviewRow(t.size, formatBytes(summary.totalBytes))
                     Text(t.help11, style = MaterialTheme.typography.bodySmall)
                 }
@@ -581,10 +581,10 @@ internal fun HomeScreen(
 
 
 @Composable
-private fun PreviewRow(label: String, value: Int) {
+private fun PreviewRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f))
-        Text(value.toString(), fontWeight = FontWeight.SemiBold)
+        Text(value, fontWeight = FontWeight.SemiBold)
     }
 }
 
