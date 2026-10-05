@@ -11,7 +11,7 @@ android{
   versionName="2.0"
  }
  buildFeatures{buildConfig=true}
- buildTypes{getByName("release"){isMinifyEnabled=false;isShrinkResources=false}}
+ buildTypes{getByName("release"){isMinifyEnabled=true;isShrinkResources=true;proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),"proguard-rules.pro")}}
  compileOptions{sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17}
 }
 kotlin{jvmToolchain(17)}
