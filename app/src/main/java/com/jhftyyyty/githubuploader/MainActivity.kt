@@ -85,8 +85,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        selectedUri = null
-        selectedName = ""
+        if (isFinishing) {
+            selectedUri = null
+            selectedName = ""
+        }
         super.onDestroy()
     }
 
