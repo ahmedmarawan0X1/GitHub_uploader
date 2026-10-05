@@ -42,7 +42,7 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, repo.name + "-" + System.currentTimeMillis() + ".zip")
                     put(MediaStore.Downloads.MIME_TYPE, "application/zip")
-                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/GitHubUploader")
+                    put(MediaStore.Downloads.RELATIVE_PATH, context.getString(R.string.download_folder))
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val u = applicationContext.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
@@ -96,8 +96,8 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
             NOTIFICATION_ID,
             NotificationCompat.Builder(applicationContext, CHANNEL)
                 .setSmallIcon(if (error) android.R.drawable.stat_notify_error else android.R.drawable.stat_sys_download_done)
-                .setContentTitle(if (error) "GitHub uploader" else "تم تنزيل المشروع")
-                .setContentText(if (error) "تعذر إكمال التنزيل" else "تم حفظ الملف في Download/GitHubUploader")
+                .setContentTitle(if (error) context.getString(R.string.error) else context.getString(R.string.download_done))
+                .setContentText(if (error) context.getString(R.string.download_error) else context.getString(R.string.download_saved))
                 .setAutoCancel(true)
                 .setOngoing(false)
                 .setOnlyAlertOnce(true)
@@ -108,7 +108,7 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
     private fun notification(d: Long, t: Long) =
         NotificationCompat.Builder(applicationContext, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle(if (t > 0) "$d / $t" else "Downloading")
+            .setContentTitle(if (t > 0) "$d / $t" else context.getString(R.string.downloading))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setProgress(
@@ -121,7 +121,7 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
             (applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(NotificationChannel(CHANNEL, "GitHub downloads", NotificationManager.IMPORTANCE_LOW))
+                .createNotificationChannel(NotificationChannel(CHANNEL, context.getString(R.string.download_channel), NotificationManager.IMPORTANCE_LOW))
         }
     }
 
