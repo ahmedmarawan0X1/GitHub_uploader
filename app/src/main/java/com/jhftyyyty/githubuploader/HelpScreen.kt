@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,66 +19,94 @@ import androidx.compose.ui.unit.dp
 internal fun HelpScreen(t: AppStrings, back: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             TopAppBar(
-                title = { Text(t.help, fontWeight = FontWeight.Bold) },
+                title = {
+                    Column {
+                        Text(t.help, fontWeight = FontWeight.Bold)
+                        Text(
+                            t.help6,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 navigationIcon = {
-                    IconButton(back) { Icon(Icons.Default.ArrowBack, t.back) }
+                    IconButton(onClick = back) {
+                        Icon(Icons.Default.ArrowBack, t.back)
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
+
             Column(
                 Modifier
+                    .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                HelpCard(1, t.help1)
-                HelpCard(2, t.help2)
-                HelpCard(3, t.help3)
-                HelpCard(4, t.help4)
-                HelpCard(5, t.help5)
-                HelpCard(6, t.help6)
-                HelpCard(7, t.help7)
-                HelpCard(8, t.help8)
-                HelpCard(9, t.help9)
-                HelpCard(10, t.help10)
-                HelpCard(11, t.help11)
-                Spacer(Modifier.height(18.dp))
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Row(
+                        Modifier.padding(18.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            t.help1,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+
+                HelpCard(t.help2)
+                HelpCard(t.help3)
+                HelpCard(t.help4)
+                HelpCard(t.help5)
+                HelpCard(t.help6)
+                HelpCard(t.help7)
+                HelpCard(t.help8)
+                HelpCard(t.help9)
+                HelpCard(t.help10)
+                HelpCard(t.help11)
+
+                Spacer(Modifier.height(12.dp))
             }
         }
     }
 }
 
 @Composable
-private fun HelpCard(number: Int, text: String) {
+private fun HelpCard(text: String) {
     OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.outlinedCardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        )
+        shape = MaterialTheme.shapes.extraLarge
     ) {
         Row(
             Modifier.padding(16.dp),
             verticalAlignment = Alignment.Top
         ) {
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Text(
-                    number.toString(),
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Icon(
+                Icons.Default.CheckCircle,
+                null,
+                tint = MaterialTheme.colorScheme.primary
+            )
             Spacer(Modifier.width(12.dp))
             Text(
                 text,
@@ -86,4 +116,3 @@ private fun HelpCard(number: Int, text: String) {
         }
     }
 }
-
