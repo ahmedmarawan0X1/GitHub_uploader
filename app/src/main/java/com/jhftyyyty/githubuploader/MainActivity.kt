@@ -101,7 +101,7 @@ class MainActivity:ComponentActivity(){
   if(message.isNotBlank()){Spacer(Modifier.height(8.dp));Card(Modifier.fillMaxWidth()){Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically){Icon(if(ok==true)Icons.Default.CheckCircle else Icons.Default.ErrorOutline,null,tint=if(ok==true)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error);Spacer(Modifier.width(10.dp));Text(message,fontWeight=FontWeight.Medium)}}}
   if(result.isNotBlank()){Spacer(Modifier.height(8.dp));OutlinedCard(onClick={if(mode!=UploadMode.DOWNLOAD)context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(result)))},modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(14.dp)){Text(t.result,fontWeight=FontWeight.SemiBold);Text(result,color=MaterialTheme.colorScheme.primary)}}}
   Spacer(Modifier.height(24.dp))
- if(oauthDialog)BrowserLoginDialog(t,{oauthDialog=false},{newToken->token=newToken;store.save(newToken);account=runCatching{withContext(Dispatchers.IO){GitHubApi.currentUser(newToken).login}}.getOrNull();oauthDialog=false})
+ if(oauthDialog)BrowserLoginDialog(t,{oauthDialog=false},{newToken->token=newToken;store.save(newToken);scope.launch{account=runCatching{withContext(Dispatchers.IO){GitHubApi.currentUser(newToken).login}}.getOrNull()};oauthDialog=false})
 }
 
 @Composable private fun BrowserLoginDialog(t:AppStrings,close:()->Unit,done:(String)->Unit){
