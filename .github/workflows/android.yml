@@ -18,10 +18,7 @@ jobs:
         with:
           gradle-version: "8.9"
       - name: Build and lint
-        env:
-          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
         run: |
-          if [ -n "$GITHUB_CLIENT_ID" ]; then echo "githubClientId=$GITHUB_CLIENT_ID" >> gradle.properties; fi
           gradle assembleRelease lintRelease --no-daemon
       - name: Verify APK
         run: |
