@@ -136,7 +136,7 @@ internal object GitHubApi {
     private data class Remote(val sha:String,val type:String)
     private fun tree(token:String,owner:String,repo:String,sha:String):Map<String,Remote>{
         val r=request("GET",API+"/repos/"+enc(owner)+"/"+enc(repo)+"/git/trees/"+sha+"?recursive=1",token);checkOk(r,"Could not read repository tree")
-        val root=JSONObject(r.body);check(!root.optBoolean("truncated",false)){"Repository tree is too large for a safe sync"}
+        val root=JSONObject(r.body);check(!root.optBoolean("truncated",false)){"Repository tree is too large to analyze safely"}
         val a=root.getJSONArray("tree");val out=HashMap<String,Remote>();for(i in 0 until a.length()){val o=a.getJSONObject(i);out[o.getString("path")]=Remote(o.optString("sha"),o.optString("type"))};return out
     }
 
