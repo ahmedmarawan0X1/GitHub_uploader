@@ -101,4 +101,3 @@
     <string name="no_token">Add a GitHub token in Settings before starting.</string>
     <string name="ignore_file">Uploader ignore file</string>
     <string name="help11">Add an ignore file to the ZIP to exclude files or folders from upload.</string>
->
