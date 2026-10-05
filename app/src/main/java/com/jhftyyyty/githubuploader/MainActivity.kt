@@ -14,7 +14,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                         helpOrigin = screen
                                         screen = Screen.HELP
                                     },
-                                    icon = { Icon(Icons.AutoMirrored.Filled.HelpOutline, null) },
+                                    icon = { Icon(Icons.Default.HelpOutline, null) },
                                     label = { Text(t.help) }
                                 )
                             }
