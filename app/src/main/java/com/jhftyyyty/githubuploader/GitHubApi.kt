@@ -39,7 +39,7 @@ internal object GitHubApi {
     }
 
     suspend fun uploadZipFile(context:Context,filePath:String,token:String,mode:UploadMode,newRepoName:String,description:String,privateRepo:Boolean,existing:RepoInfo?,resumeCheck:Boolean,progress:suspend (Int,Int,String)->Unit):String{
-        val target=resolveRepo(token,mode,newRepoName,description,privateRepo,existing)
+        val target=resolveRepo(token,mode,newRepoName,description,privateRepo,existing,resumeCheck)
         val head=branchHead(token,target.owner,target.name,target.branch)
         val remote=tree(token,target.owner,target.name,head.treeSha)
         val total=countFiles(filePath);check(total>0){"ZIP file contains no usable files"}
@@ -109,10 +109,17 @@ internal object GitHubApi {
     }
 
     private data class Target(val owner:String,val name:String,val branch:String,val url:String)
-    private fun resolveRepo(token:String,mode:UploadMode,name:String,desc:String,privateRepo:Boolean,existing:RepoInfo?):Target{
+    private fun resolveRepo(token:String,mode:UploadMode,name:String,desc:String,privateRepo:Boolean,existing:RepoInfo?,resumeCheck:Boolean):Target{
         if(mode==UploadMode.NEW){
             check(name.matches(Regex("[A-Za-z0-9._-]{1,100}"))){"Invalid repository name"}
-            val r=request("POST",API+"/user/repos",token,JSONObject().put("name",name).put("description",desc).put("private",privateRepo).put("auto_init",true).toString());checkOk(r,"Repository creation failed")
+            val r=request("POST",API+"/user/repos",token,JSONObject().put("name",name).put("description",desc).put("private",privateRepo).put("auto_init",true).toString())
+            if(r.code==422 && resumeCheck){
+                val login=currentUser(token).login
+                val existingResponse=request("GET",API+"/repos/"+enc(login)+"/"+enc(name),token)
+                checkOk(existingResponse,"Could not resume repository creation")
+                val o=JSONObject(existingResponse.body);return Target(login,o.getString("name"),o.optString("default_branch","main"),o.getString("html_url"))
+            }
+            checkOk(r,"Repository creation failed")
             val o=JSONObject(r.body);return Target(o.getJSONObject("owner").getString("login"),o.getString("name"),o.optString("default_branch","main"),o.getString("html_url"))
         }
         val s=existing?:error("No repository selected");val r=request("GET",API+"/repos/"+enc(s.owner)+"/"+enc(s.name),token);checkOk(r,"Could not access repository")
