@@ -36,8 +36,7 @@ internal fun HomeScreen(
     name: String,
     autoNaming: Boolean,
     pick: () -> Unit,
-    settings: () -> Unit,
-    help: () -> Unit
+    settings: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
