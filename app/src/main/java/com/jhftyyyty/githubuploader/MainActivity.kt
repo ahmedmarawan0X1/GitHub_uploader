@@ -107,16 +107,16 @@ class MainActivity : ComponentActivity() {
                         settings = { screen = Screen.SETTINGS },
                         help = { helpOrigin = Screen.HOME; screen = Screen.HELP }
                     )
-                    Screen.SETTINGS -> SettingsScreen(
+                    Screen.SETTINGS -> SettingsPanel(
                         t = t,
                         token = token,
                         theme = theme,
                         language = language,
                         autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
-                        changeToken = { token = it; TokenStore(this@MainActivity).save(it) },
-                        changeTheme = { theme = it; prefs.edit().putString(PREF_THEME, it.name).apply() },
-                        changeLanguage = { language = it; prefs.edit().putString(PREF_LANGUAGE, it.name).apply() },
-                        changeAutoNaming = { prefs.edit().putBoolean(PREF_AUTO_NAMING, it).apply() },
+                        changeToken = { value -> token = value; TokenStore(this@MainActivity).save(value) },
+                        changeTheme = { value -> theme = value; prefs.edit().putString(PREF_THEME, value.name).apply() },
+                        changeLanguage = { value -> language = value; prefs.edit().putString(PREF_LANGUAGE, value.name).apply() },
+                        changeAutoNaming = { value -> prefs.edit().putBoolean(PREF_AUTO_NAMING, value).apply() },
                         back = { screen = Screen.HOME },
                         help = { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
                     )
