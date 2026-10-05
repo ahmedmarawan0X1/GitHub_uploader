@@ -27,10 +27,13 @@ jobs:
         run: |
           APK=$(find app/build/outputs/apk/release -name "*.apk" -print -quit)
           test -n "$APK"
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          sha256sum "$APK" | tee app/build/outputs/apk/release/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: GitHubUploader-release
           path: |
-                 app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/*.apk
                  app/build/outputs/apk/release/SHA256SUMS.txt
           if-no-files-found: error
