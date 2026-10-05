@@ -13,8 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Home
@@ -22,7 +20,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.WorkManager
@@ -132,15 +129,10 @@ class MainActivity : ComponentActivity() {
             AppTheme(dark) {
                 SideEffect { updateSystemBars(window, dark) }
 
-                // The bottom navigation must not reserve space while the IME is open.
-                // Otherwise Scaffold keeps an empty area above the keyboard even though
-                // the navigation bar is visually covered by the IME.
-                val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        if (screen != Screen.HELP && !imeVisible) {
+                        if (screen != Screen.HELP) {
                             NavigationBar(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                 tonalElevation = 0.dp
