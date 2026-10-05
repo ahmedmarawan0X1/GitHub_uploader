@@ -265,6 +265,9 @@ private fun HomeScreen(
                     }
                     else -> Unit
                 }
+                if (info.state.isFinished) {
+                    withContext(Dispatchers.IO) { runCatching { wm.pruneWork().get() } }
+                }
             }
             delay(700)
         }
@@ -538,7 +541,9 @@ private fun HomeScreen(
                 enabled = if (busy) true else enabled,
                 onClick = {
                     if (busy) {
-                        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+                        WorkManager.getInstance(context).cancelUniqueWork(
+                            if (mode == UploadMode.DOWNLOAD) DownloadWorker.WORK_NAME else WORK_NAME
+                        )
                     } else scope.launch {
                         busy = true
                         ok = null
