@@ -160,70 +160,49 @@ internal fun SettingsPanel(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     )
                 ) {
-                    Column(Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                SettingRow(
-                    Icons.Default.DarkMode,
-                    t.theme,
-                    when (theme) {
-                        ThemeMode.SYSTEM -> t.system
-                        ThemeMode.LIGHT -> t.light
-                        ThemeMode.AMOLED -> t.amoled
-                    }
-                ) {
-                    changeTheme(
-                        when (theme) {
-                            ThemeMode.SYSTEM -> ThemeMode.LIGHT
-                            ThemeMode.LIGHT -> ThemeMode.AMOLED
-                            ThemeMode.AMOLED -> ThemeMode.SYSTEM
+                    Column(Modifier.padding(4.dp)) {
+                        SettingRow(
+                            Icons.Default.DarkMode,
+                            t.theme,
+                            when (theme) {
+                                ThemeMode.SYSTEM -> t.system
+                                ThemeMode.LIGHT -> t.light
+                                ThemeMode.AMOLED -> t.amoled
+                            }
+                        ) {
+                            changeTheme(
+                                when (theme) {
+                                    ThemeMode.SYSTEM -> ThemeMode.LIGHT
+                                    ThemeMode.LIGHT -> ThemeMode.AMOLED
+                                    ThemeMode.AMOLED -> ThemeMode.SYSTEM
+                                }
+                            )
                         }
-                    )
-                }
-
-                SettingRow(
-                    Icons.Default.Language,
-                    t.language,
-                    when (language) {
-                        LanguageMode.SYSTEM -> t.system
-                        LanguageMode.ARABIC -> t.arabic
-                        LanguageMode.ENGLISH -> t.english
-                    }
-                ) {
-                    changeLanguage(
-                        when (language) {
-                            LanguageMode.SYSTEM -> LanguageMode.ARABIC
-                            LanguageMode.ARABIC -> LanguageMode.ENGLISH
-                            LanguageMode.ENGLISH -> LanguageMode.SYSTEM
+                        SettingRow(
+                            Icons.Default.Language,
+                            t.language,
+                            when (language) {
+                                LanguageMode.SYSTEM -> t.system
+                                LanguageMode.ARABIC -> t.arabic
+                                LanguageMode.ENGLISH -> t.english
+                            }
+                        ) {
+                            changeLanguage(
+                                when (language) {
+                                    LanguageMode.SYSTEM -> LanguageMode.ARABIC
+                                    LanguageMode.ARABIC -> LanguageMode.ENGLISH
+                                    LanguageMode.ENGLISH -> LanguageMode.SYSTEM
+                                }
+                            )
                         }
-                    )
-                }
-
-                    SettingToggleRow(
-                        Icons.Default.AutoAwesome,
-                        t.autoNaming,
-                        t.autoNamingSub,
-                        autoNaming,
-                        changeAutoNaming
-                    )
+                        SettingToggleRow(
+                            Icons.Default.AutoAwesome,
+                            t.autoNaming,
+                            t.autoNamingSub,
+                            autoNaming,
+                            changeAutoNaming
+                        )
                     }
-                }
-
-                SettingsSectionLabel(Icons.Default.Tune, t.language)
-                SettingRow(
-                    Icons.Default.Language,
-                    t.language,
-                    when (language) {
-                        LanguageMode.SYSTEM -> t.system
-                        LanguageMode.ARABIC -> t.arabic
-                        LanguageMode.ENGLISH -> t.english
-                    }
-                ) {
-                    changeLanguage(
-                        when (language) {
-                            LanguageMode.SYSTEM -> LanguageMode.ARABIC
-                            LanguageMode.ARABIC -> LanguageMode.ENGLISH
-                            LanguageMode.ENGLISH -> LanguageMode.SYSTEM
-                        }
-                    )
                 }
 
                 SettingsSectionLabel(Icons.Default.MoreHoriz, t.help)
