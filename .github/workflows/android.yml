@@ -30,5 +30,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: GitHubUploader-release
-          path: app/build/outputs/apk/release/*.apk
+          path: |
+                 app/build/outputs/apk/release/*.apk
+                 app/build/outputs/apk/release/SHA256SUMS.txt
           if-no-files-found: error
