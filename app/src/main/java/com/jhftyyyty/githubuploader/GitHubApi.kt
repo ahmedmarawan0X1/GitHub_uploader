@@ -46,7 +46,7 @@ internal object GitHubApi {
         token: String,
         mode: UploadMode,
         existing: RepoInfo?
-    ): PreviewSummary {
+    ): UploadReview {
         val remote = if (mode == UploadMode.EXISTING) {
             val selected = existing ?: error("No repository selected")
             val target = resolveRepo(token, UploadMode.EXISTING, "", "", false, selected, false)
@@ -93,7 +93,7 @@ internal object GitHubApi {
         val remoteOnly = if (mode == UploadMode.EXISTING) {
             remote.keys.count { it !in seen && it != ".githubuploaderignore" }
         } else 0
-        return PreviewSummary(files, additions, modified, unchanged, ignoredCount, remoteOnly, totalBytes)
+        return UploadReview(files, additions, modified, unchanged, ignoredCount, remoteOnly, totalBytes)
     }
 
     suspend fun uploadZipFile(context:Context,filePath:String,token:String,mode:UploadMode,newRepoName:String,description:String,privateRepo:Boolean,existing:RepoInfo?,resumeCheck:Boolean,progress:suspend (Int,Int,String)->Unit):String{
