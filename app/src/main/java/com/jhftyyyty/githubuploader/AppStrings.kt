@@ -57,6 +57,11 @@ internal class AppStrings(val ar: Boolean) {
     val light = if (ar) "فاتح" else "Light"
     val amoled = "AMOLED"
     val language = if (ar) "اللغة" else "Language"
+    val autoNaming = if (ar) "تسمية المستودع تلقائيًا" else "Auto-name repository"
+    val autoNamingSub = if (ar) "استخدم اسم ملف ZIP كاسم المستودع عند إنشاء مستودع جديد." else "Use the ZIP filename as the repository name for new repositories."
+    val projectLink = if (ar) "مشروع GitHub uploader" else "GitHub uploader project"
+    val openProject = if (ar) "فتح صفحة المشروع على GitHub" else "Open the project on GitHub"
+    val refreshHint = if (ar) "اضغط تحديث قائمة المستودعات لتحميل مستودعات حسابك." else "Refresh repositories to load the repositories in your account."
     val arabic = if (ar) "العربية" else "Arabic"
     val english = if (ar) "الإنجليزية" else "English"
     val notConnected = if (ar) "غير متصل" else "Not connected"
@@ -71,4 +76,6 @@ internal class AppStrings(val ar: Boolean) {
     val help7 = if (ar) "التحديث يرفع الملفات المتغيرة فقط، بينما المزامنة الكاملة تطابق محتوى GitHub مع ملف ZIP وتحذف الملفات التي لم تعد موجودة." else "Update uploads changed files only, while Exact sync mirrors the ZIP and removes files no longer present."
     val help8 = if (ar) "التنزيل يحفظ نسخة ZIP من فرع المستودع المحدد." else "Download saves a ZIP copy of the selected repository branch."
     val help9 = if (ar) "الملفات الكبيرة تُعالج على دفعات لتقليل استهلاك الذاكرة." else "Large files are processed in bounded chunks."
+    val help10 = if (ar) "يمكنك تفعيل التسمية التلقائية من الإعدادات لاستخدام اسم ملف ZIP عند إنشاء مستودع جديد." else "Enable auto-naming in Settings to use the ZIP filename when creating a new repository."
+    val help11 = if (ar) "يمكن فتح التطبيق مباشرةً من قائمة المشاركة في مدير الملفات لاختيار ملف ZIP دون البحث عنه مرة أخرى داخل التطبيق." else "You can open the app from a file manager share sheet to select a ZIP without browsing for it again."
 }
