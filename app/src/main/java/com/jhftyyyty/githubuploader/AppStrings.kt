@@ -63,6 +63,7 @@ internal class AppStrings(val ar: Boolean) {
     val help3 = if (ar) "لرفع وتحديث الملفات: من Repository permissions فعّل Contents = Read and write، واترك Metadata = Read-only." else "For upload and update: set Repository permissions → Contents = Read and write, and Metadata = Read-only."
     val help4 = if (ar) "لإنشاء مستودع جديد أيضًا: فعّل Repository creation أو Administration = Read and write إذا ظهر هذا الخيار في حسابك." else "To create new repositories too: enable Repository creation or Administration = Read and write when offered for your account."
     val help5 = if (ar) "بعد إنشاء الرمز انسخه مرة واحدة والصقه داخل التطبيق. لا تشاركه مع أي شخص، ويمكنك إلغاؤه من GitHub في أي وقت." else "Copy the token once and paste it into the app. Never share it; you can revoke it from GitHub at any time."
+    val help6 = if (ar) "استخدم Fine-grained Token وحدد المستودعات والصلاحيات المطلوبة فقط لتقليل نطاق الوصول." else "Use a Fine-grained Token and grant only the repositories and permissions the app needs."
     val help7 = if (ar) "التحديث يرفع الملفات المتغيرة فقط، بينما المزامنة الكاملة تطابق محتوى GitHub مع ملف ZIP وتحذف الملفات التي لم تعد موجودة." else "Update uploads changed files only, while Exact sync mirrors the ZIP and removes files no longer present."
     val help8 = if (ar) "التنزيل يحفظ نسخة ZIP من فرع المستودع المحدد." else "Download saves a ZIP copy of the selected repository branch."
     val help9 = if (ar) "الملفات الكبيرة تُعالج على دفعات لتقليل استهلاك الذاكرة." else "Large files are processed in bounded chunks."
