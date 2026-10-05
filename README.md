@@ -12,8 +12,9 @@ Android app for managing GitHub repositories directly from a phone.
 - ZIP processing uses temporary files and bounded buffers instead of keeping the whole project in RAM.
 - Background WorkManager jobs with progress notifications.
 - GitHub token storage is encrypted with Android Keystore.
-- Manual Personal Access Token remains fully supported.
-- Cleaner Material 3 interface with Arabic/English support and no decorative emoji labels.
+- Manual Personal Access Token is the only authentication flow.
+- Cleaner Material 3 interface with Arabic/English resources and no decorative emoji labels.
+- UI screens are separated from the Activity, app constants are centralized, and pending upload files are managed in one place.
 - Release signing credentials are no longer stored in the repository.
 
 ## Authentication
