@@ -54,7 +54,7 @@ internal fun HomeScreen(
     var progress by remember { mutableStateOf(0f) }
     var progressText by remember { mutableStateOf("") }
     var result by remember { mutableStateOf("") }
-    var preview by remember { mutableStateOf<PreviewSummary?>(null) }
+    var preview by remember { mutableStateOf<UploadReview?>(null) }
     var previewFile by remember { mutableStateOf<File?>(null) }
     var preparing by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
