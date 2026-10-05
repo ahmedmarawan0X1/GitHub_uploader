@@ -262,9 +262,6 @@ private fun HomeScreen(
                     }
                     else -> Unit
                 }
-                if (info.state.isFinished) {
-                    wm.pruneWork()
-                }
             }
             delay(700)
         }
