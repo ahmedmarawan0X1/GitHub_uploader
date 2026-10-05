@@ -11,6 +11,7 @@ internal class AppStrings(val ar: Boolean) {
 
     val operation = if (ar) "العملية" else "Operation"
     val newRepo = if (ar) "مستودع جديد" else "New repository"
+    val existing = if (ar) "رفع إلى مستودع" else "Existing repository"
     val download = if (ar) "تنزيل" else "Download"
 
     val repoName = if (ar) "اسم المستودع" else "Repository name"
