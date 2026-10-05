@@ -157,7 +157,30 @@ internal object GitHubApi {
     private fun ByteArray.toHex()=joinToString(""){"%02x".format(it)}
     private fun enc(s:String)=URLEncoder.encode(s,"UTF-8").replace("+","%20")
     private data class R(val code:Int,val body:String)
-    private fun checkOk(r:R,msg:String){check(r.code in 200..299){msg+" ("+r.code+"): "+r.body.take(500)}}
+    private fun checkOk(r:R,msg:String){
+        if(r.code in 200..299) return
+        val body=r.body
+        val errorMessage=when(r.code){
+            401 -> "رمز GitHub غير صالح أو منتهي."
+            403 -> "لا يملك رمز GitHub الصلاحيات المطلوبة، أو تم تجاوز حد الطلبات."
+            404 -> "المستودع غير موجود أو لا يمكن الوصول إليه."
+            409 -> "حدث تعارض أثناء تنفيذ العملية. أعد المحاولة."
+            422 -> {
+                val lower=body.lowercase()
+                when {
+                    lower.contains("field\\\":\\\"name") && lower.contains("already exists") ->
+                        "اسم المستودع مستخدم بالفعل على هذا الحساب."
+                    lower.contains("name") && lower.contains("already exists") ->
+                        "اسم المستودع مستخدم بالفعل على هذا الحساب."
+                    else -> "البيانات المدخلة غير مقبولة من GitHub."
+                }
+            }
+            429 -> "تم تجاوز حد طلبات GitHub. انتظر قليلًا ثم أعد المحاولة."
+            in 500..599 -> "خادم GitHub غير متاح مؤقتًا. أعد المحاولة لاحقًا."
+            else -> "$msg."
+        }
+        error(errorMessage)
+    }
     private fun request(method:String,url:String,token:String,body:String?=null):R{
         val c=URL(url).openConnection() as HttpURLConnection;c.requestMethod=method;c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2026-03-10");c.setRequestProperty("Content-Type","application/json");c.connectTimeout=20000;c.readTimeout=120000
         if(body!=null){c.doOutput=true;c.outputStream.use{it.write(body.toByteArray())}};val code=c.responseCode;val text=(if(code in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText()}.orEmpty();c.disconnect();return R(code,text)
