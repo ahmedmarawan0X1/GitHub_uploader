@@ -205,7 +205,7 @@ internal fun SettingsPanel(
                     }
                 }
 
-                SectionHeader(Icons.Default.MoreHoriz, t.help)
+                SectionHeader(Icons.Default.HelpOutline, t.help)
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.extraLarge,
@@ -213,10 +213,10 @@ internal fun SettingsPanel(
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(Modifier.padding(6.dp)) {
+                        SettingRow(Icons.Default.HelpOutline, t.help, t.help6, help)
                         SettingRow(Icons.Default.Link, t.projectLink, t.openProject) {
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DEFAULT_PROJECT_URL))) }
                         }
-                        SettingRow(Icons.Default.HelpOutline, t.help, t.help6, help)
                     }
                 }
 
