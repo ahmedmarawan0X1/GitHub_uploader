@@ -9,7 +9,6 @@ android{
   targetSdk=35
   versionCode=2
   versionName="2.0"
-  buildConfigField("String","GITHUB_CLIENT_ID","\""+githubClientId+"\"")
  }
  buildFeatures{buildConfig=true}
  buildTypes{getByName("release"){isMinifyEnabled=false;isShrinkResources=false}}
