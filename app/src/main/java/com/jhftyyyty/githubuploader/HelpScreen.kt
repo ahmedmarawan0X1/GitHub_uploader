@@ -39,7 +39,7 @@ internal fun HelpScreen(t: AppStrings, back: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
             )
 
