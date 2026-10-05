@@ -10,7 +10,7 @@ internal const val MAX_FILE_SIZE = 90L * 1024L * 1024L
 internal const val DEFAULT_PROJECT_URL = "https://github.com/ahmedmarawan0X1/GitHub_uploader"
 internal enum class ThemeMode { SYSTEM, LIGHT, AMOLED }
 internal enum class LanguageMode { SYSTEM, ARABIC, ENGLISH }
-internal enum class UploadMode { NEW, EXISTING, SYNC, DOWNLOAD }
+internal enum class UploadMode { NEW, EXISTING, DOWNLOAD }
 internal enum class Screen { HOME, SETTINGS, HELP }
 internal data class RepoInfo(val owner:String,val name:String,val fullName:String,val defaultBranch:String,val private:Boolean)
 internal data class GitHubUser(val login:String,val name:String?,val avatarUrl:String?)
