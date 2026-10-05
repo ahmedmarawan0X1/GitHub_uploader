@@ -70,7 +70,7 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
             Result.success(workDataOf(KEY_RESULT_PATH to uri))
         } catch (e: Exception) {
             notifyFinished(true)
-            Result.failure(workDataOf(KEY_ERROR to (e.message ?: e.javaClass.simpleName)))
+            Result.failure(workDataOf(KEY_ERROR to GitHubApi.friendlyError(e.message ?: e.javaClass.simpleName)))
         }
     }
 
