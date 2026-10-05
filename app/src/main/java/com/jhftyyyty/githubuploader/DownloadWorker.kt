@@ -16,7 +16,7 @@ import java.io.File
 
 class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(app, params) {
     override suspend fun doWork(): Result {
-        val token = inputData.getString(KEY_TOKEN).orEmpty().ifBlank { TokenStore(applicationContext).get() }
+        val token = TokenStore(applicationContext).get()
         if (token.isBlank()) return Result.failure(workDataOf(KEY_ERROR to "GitHub token is missing"))
 
         val repo = RepoInfo(
@@ -125,7 +125,6 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
 
     companion object {
         const val WORK_NAME = "github_download_job"
-        const val KEY_TOKEN = "token"
         const val KEY_OWNER = "owner"
         const val KEY_REPO = "repo"
         const val KEY_FULL_NAME = "full_name"
