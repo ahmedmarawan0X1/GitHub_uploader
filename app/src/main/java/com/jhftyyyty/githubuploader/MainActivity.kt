@@ -703,7 +703,7 @@ private fun HomeScreen(
             Spacer(Modifier.height(28.dp))
         }
     }
-
+}
 
 @Composable
 private fun OperationButton(
