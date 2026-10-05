@@ -82,4 +82,23 @@
     <string name="no_token">أضف رمز GitHub من الإعدادات قبل البدء.</string>
     <string name="ignore_file">.githubuploaderignore</string>
     <string name="help11">أضف ملف .githubuploaderignore داخل ZIP لاستبعاد ملفات أو مجلدات من الرفع. نمط واحد في كل سطر، ويبدأ التعليق بالرمز #.</string>
+    <string name="verify_token">التحقق من الرمز</string>
+    <string name="token_valid">الرمز صالح</string>
+    <string name="token_invalid">تعذر التحقق من الرمز</string>
+    <string name="remove_token">حذف الرمز</string>
+    <string name="account">الحساب</string>
+    <string name="review">مراجعة التغييرات</string>
+    <string name="start_now">بدء الآن</string>
+    <string name="close">إغلاق</string>
+    <string name="preview_title">مراجعة التغييرات</string>
+    <string name="files">الملفات</string>
+    <string name="added">جديد</string>
+    <string name="modified">معدل</string>
+    <string name="unchanged">بدون تغيير</string>
+    <string name="ignored">مستبعد</string>
+    <string name="preserved">ملفات موجودة محفوظة</string>
+    <string name="size">حجم المشروع</string>
+    <string name="no_token">أضف رمز GitHub من الإعدادات قبل البدء.</string>
+    <string name="ignore_file">ملف الاستثناءات</string>
+    <string name="help11">أضف ملف الاستثناءات داخل ZIP لاستبعاد ملفات أو مجلدات من الرفع.</string>
 
