@@ -7,6 +7,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.HttpURLConnection
 import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.ensureActive
 import java.net.URL
 import java.net.URLEncoder
 import java.security.MessageDigest
