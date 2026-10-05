@@ -82,4 +82,23 @@
     <string name="no_token">Add a GitHub token in Settings before starting.</string>
     <string name="ignore_file">.githubuploaderignore</string>
     <string name="help11">Add .githubuploaderignore to the ZIP to exclude files or folders from upload. One pattern per line; # starts a comment.</string
+    <string name="verify_token">Verify token</string>
+    <string name="token_valid">Token is valid</string>
+    <string name="token_invalid">Token could not be verified</string>
+    <string name="remove_token">Remove token</string>
+    <string name="account">Account</string>
+    <string name="review">Review changes</string>
+    <string name="start_now">Start now</string>
+    <string name="close">Close</string>
+    <string name="preview_title">Review changes</string>
+    <string name="files">Files</string>
+    <string name="added">Added</string>
+    <string name="modified">Modified</string>
+    <string name="unchanged">Unchanged</string>
+    <string name="ignored">Ignored</string>
+    <string name="preserved">Remote-only preserved</string>
+    <string name="size">Project size</string>
+    <string name="no_token">Add a GitHub token in Settings before starting.</string>
+    <string name="ignore_file">Uploader ignore file</string>
+    <string name="help11">Add an ignore file to the ZIP to exclude files or folders from upload.</string>
 >
