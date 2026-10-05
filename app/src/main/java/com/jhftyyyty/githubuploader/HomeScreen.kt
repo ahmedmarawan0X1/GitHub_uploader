@@ -358,7 +358,7 @@ internal fun HomeScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            val enabled = !busy &&
+            val enabled = !busy && !preparing &&
                 token.isNotBlank() &&
                 if (mode == UploadMode.DOWNLOAD) {
                     selected != null
