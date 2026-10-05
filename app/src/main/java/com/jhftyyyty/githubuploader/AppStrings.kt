@@ -1,72 +1,84 @@
 package com.jhftyyyty.githubuploader
 
-internal class AppStrings(val ar: Boolean) {
-    val app = "GitHub uploader"
-    val subtitle = if (ar) "إدارة مشاريع GitHub من الهاتف" else "Manage GitHub projects from your phone"
+import android.content.Context
+import android.content.res.Configuration
+import java.util.Locale
 
-    val token = if (ar) "رمز GitHub" else "GitHub token"
-    val show = if (ar) "إظهار" else "Show"
-    val hide = if (ar) "إخفاء" else "Hide"
-    val createToken = if (ar) "إنشاء رمز" else "Create token"
+internal class AppStrings(context: Context, language: LanguageMode) {
+    private val localizedContext = when (language) {
+        LanguageMode.SYSTEM -> context
+        LanguageMode.ARABIC -> context.withLocale(Locale("ar"))
+        LanguageMode.ENGLISH -> context.withLocale(Locale.ENGLISH)
+    }
 
-    val operation = if (ar) "العملية" else "Operation"
-    val newRepo = if (ar) "مستودع جديد" else "New repository"
-    val existing = if (ar) "رفع إلى مستودع" else "Existing repository"
-    val download = if (ar) "تنزيل" else "Download"
+    private fun Context.withLocale(locale: Locale): Context {
+        val configuration = Configuration(resources.configuration)
+        configuration.setLocale(locale)
+        return createConfigurationContext(configuration)
+    }
 
-    val repoName = if (ar) "اسم المستودع" else "Repository name"
-    val description = if (ar) "الوصف" else "Description"
-    val privateRepo = if (ar) "خاص" else "Private"
-    val publicRepo = if (ar) "عام" else "Public"
-    val repository = if (ar) "المستودع" else "Repository"
-    val chooseRepo = if (ar) "اختر المستودع" else "Choose repository"
-    val refreshRepositories = if (ar) "تحديث قائمة المستودعات" else "Refresh repositories"
-    val noRepositories = if (ar) "حدّث القائمة لاختيار مستودع" else "Refresh to choose a repository"
+    private fun get(id: Int): String = localizedContext.getString(id)
 
-    val source = if (ar) "مصدر المشروع" else "Project source"
-    val chooseZip = if (ar) "اختيار ZIP" else "Choose ZIP"
-    val noFile = if (ar) "لم يتم اختيار ملف" else "No file selected"
-    val start = if (ar) "بدء العملية" else "Start"
-    val working = if (ar) "جارٍ التنفيذ…" else "Working…"
-    val cancel = if (ar) "إلغاء العملية" else "Cancel operation"
-    val resuming = if (ar) "يتم استئناف الرفع تلقائيًا عند عودة الاتصال" else "Upload resumes automatically when the connection returns"
-    val done = if (ar) "تمت العملية بنجاح" else "Operation completed"
-    val downloadDone = if (ar) "تم تنزيل المشروع بنجاح" else "Project downloaded successfully"
-    val cancelled = if (ar) "تم إلغاء العملية" else "Operation cancelled"
-    val error = if (ar) "حدث خطأ" else "Something went wrong"
-    val result = if (ar) "تم إنشاء رابط المستودع" else "Repository link is ready"
-    val openOnGitHub = if (ar) "فتح المستودع على GitHub" else "Open repository on GitHub"
-    val savedToDownloads = if (ar) "تم حفظ الملف" else "File saved"
-    val downloadFolder = if (ar) "Download/GitHubUploader" else "Download/GitHubUploader"
-    val openFile = if (ar) "فتح" else "Open"
-    val openZip = if (ar) "تعذر قراءة ملف ZIP" else "Could not read ZIP"
-
-    val settings = if (ar) "الإعدادات" else "Settings"
-    val help = if (ar) "المساعدة" else "Help"
-    val back = if (ar) "رجوع" else "Back"
-    val theme = if (ar) "المظهر" else "Appearance"
-    val system = if (ar) "تلقائي" else "System"
-    val light = if (ar) "فاتح" else "Light"
-    val amoled = "AMOLED"
-    val language = if (ar) "اللغة" else "Language"
-    val autoNaming = if (ar) "تسمية المستودع تلقائيًا" else "Auto-name repository"
-    val autoNamingSub = if (ar) "استخدم اسم ملف ZIP كاسم المستودع عند إنشاء مستودع جديد." else "Use the ZIP filename as the repository name for new repositories."
-    val projectLink = if (ar) "مشروع GitHub uploader" else "GitHub uploader project"
-    val openProject = if (ar) "فتح صفحة المشروع على GitHub" else "Open the project on GitHub"
-    val refreshHint = if (ar) "اضغط تحديث قائمة المستودعات لتحميل مستودعات حسابك." else "Refresh repositories to load the repositories in your account."
-    val arabic = if (ar) "العربية" else "Arabic"
-    val english = if (ar) "الإنجليزية" else "English"
-    val notConnected = if (ar) "غير متصل" else "Not connected"
-    val authHint = if (ar) "استخدم رمز GitHub للوصول إلى حسابك." else "Use a GitHub token to access your account."
-
-    val help1 = if (ar) "إنشاء الرمز: افتح Developer settings ثم Personal access tokens > Fine-grained tokens واختر Generate new token." else "Create a token: open Developer settings, then Personal access tokens > Fine-grained tokens, and choose Generate new token."
-    val help2 = if (ar) "صلاحيات الرفع: Contents = Read and write وMetadata = Read-only. لإنشاء مستودعات جديدة استخدم Administration = Read and write. وأضف Workflows = Read and write إذا كان التطبيق سيعدل ملفات GitHub Actions." else "Upload permissions: Contents = Read and write and Metadata = Read-only. For new repositories use Administration = Read and write. Add Workflows = Read and write if the app will modify GitHub Actions files."
-    val help3 = if (ar) "حدد المستودعات التي يحتاج إليها الرمز فقط، ثم انسخه والصقه في التطبيق. لا تشاركه مع أي شخص ويمكنك إلغاؤه من GitHub." else "Limit the token to the repositories it needs, then paste it into the app. Never share it; you can revoke it from GitHub."
-    val help4 = if (ar) "الرفع الذكي يقارن Git SHA مع الملفات الموجودة على GitHub، لذلك الملفات التي لم تتغير لا تُرفع مرة أخرى." else "Smart upload compares Git SHAs with GitHub, so unchanged files are not uploaded again."
-    val help5 = if (ar) "إذا انقطع الإنترنت، يحتفظ التطبيق بملف ZIP ويعيد المحاولة تلقائيًا عند عودة الاتصال، ويستفيد من الملفات التي تم رفعها بالفعل." else "If the connection drops, the app keeps the ZIP and retries automatically when the connection returns, reusing blobs already uploaded."
-    val help6 = if (ar) "يمكنك إلغاء العملية في أي وقت. عند الإلغاء يتوقف الرفع ويحذف ملف الرفع المؤقت." else "You can cancel at any time. Cancelling stops the upload and removes its temporary upload file."
-    val help7 = if (ar) "مصدر الرفع هو ZIP فقط. ويمكنك إرسال ملف ZIP إلى التطبيق مباشرةً من قائمة المشاركة في مدير الملفات." else "ZIP is the only upload source. You can send a ZIP directly to the app from your file manager share menu."
-    val help8 = if (ar) "الملفات المتغيرة تُرفع بالتوازي لتسريع المشاريع الكبيرة، مع معالجة ZIP على دفعات لتقليل استهلاك الذاكرة." else "Changed files are uploaded in parallel for better speed on large projects, while the ZIP is processed in bounded batches to reduce memory use."
-    val help9 = if (ar) "التسمية التلقائية تستخدم اسم ملف ZIP كاسم المستودع الجديد، ويمكن تشغيلها أو إيقافها من الإعدادات." else "Auto-naming uses the ZIP filename as the new repository name and can be enabled or disabled in Settings."
-    val help10 = if (ar) "التنزيل يحفظ نسخة ZIP من فرع المستودع المحدد." else "Download saves a ZIP copy of the selected repository branch."
+    val app get() = get(R.string.app_name)
+    val subtitle get() = get(R.string.subtitle)
+    val token get() = get(R.string.token)
+    val show get() = get(R.string.show)
+    val hide get() = get(R.string.hide)
+    val createToken get() = get(R.string.create_token)
+    val operation get() = get(R.string.operation)
+    val newRepo get() = get(R.string.new_repo)
+    val existing get() = get(R.string.existing)
+    val download get() = get(R.string.download)
+    val repoName get() = get(R.string.repo_name)
+    val description get() = get(R.string.description)
+    val privateRepo get() = get(R.string.private_repo)
+    val publicRepo get() = get(R.string.public_repo)
+    val repository get() = get(R.string.repository)
+    val chooseRepo get() = get(R.string.choose_repo)
+    val refreshRepositories get() = get(R.string.refresh_repositories)
+    val noRepositories get() = get(R.string.no_repositories)
+    val source get() = get(R.string.source)
+    val chooseZip get() = get(R.string.choose_zip)
+    val noFile get() = get(R.string.no_file)
+    val start get() = get(R.string.start)
+    val working get() = get(R.string.working)
+    val cancel get() = get(R.string.cancel)
+    val resuming get() = get(R.string.resuming)
+    val done get() = get(R.string.done)
+    val downloadDone get() = get(R.string.download_done)
+    val cancelled get() = get(R.string.cancelled)
+    val error get() = get(R.string.error)
+    val result get() = get(R.string.result)
+    val openOnGitHub get() = get(R.string.open_on_github)
+    val savedToDownloads get() = get(R.string.saved_to_downloads)
+    val downloadFolder get() = get(R.string.download_folder)
+    val openFile get() = get(R.string.open_file)
+    val openZip get() = get(R.string.open_zip)
+    val settings get() = get(R.string.settings)
+    val help get() = get(R.string.help)
+    val back get() = get(R.string.back)
+    val theme get() = get(R.string.theme)
+    val system get() = get(R.string.system)
+    val light get() = get(R.string.light)
+    val amoled get() = get(R.string.amoled)
+    val language get() = get(R.string.language)
+    val autoNaming get() = get(R.string.auto_naming)
+    val autoNamingSub get() = get(R.string.auto_naming_sub)
+    val projectLink get() = get(R.string.project_link)
+    val openProject get() = get(R.string.open_project)
+    val refreshHint get() = get(R.string.refresh_hint)
+    val arabic get() = get(R.string.arabic)
+    val english get() = get(R.string.english)
+    val notConnected get() = get(R.string.not_connected)
+    val authHint get() = get(R.string.auth_hint)
+    val help1 get() = get(R.string.help_1)
+    val help2 get() = get(R.string.help_2)
+    val help3 get() = get(R.string.help_3)
+    val help4 get() = get(R.string.help_4)
+    val help5 get() = get(R.string.help_5)
+    val help6 get() = get(R.string.help_6)
+    val help7 get() = get(R.string.help_7)
+    val help8 get() = get(R.string.help_8)
+    val help9 get() = get(R.string.help_9)
+    val help10 get() = get(R.string.help_10)
 }
