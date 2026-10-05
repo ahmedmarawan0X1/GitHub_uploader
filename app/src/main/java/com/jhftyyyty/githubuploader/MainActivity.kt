@@ -848,11 +848,14 @@ private fun SettingsScreen(
     t: AppStrings,
     theme: ThemeMode,
     language: LanguageMode,
+    autoNaming: Boolean,
     changeTheme: (ThemeMode) -> Unit,
     changeLanguage: (LanguageMode) -> Unit,
+    changeAutoNaming: (Boolean) -> Unit,
     back: () -> Unit,
     help: () -> Unit
 ) {
+    val context = LocalContext.current
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
