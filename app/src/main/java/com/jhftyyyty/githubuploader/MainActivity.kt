@@ -368,7 +368,7 @@ private fun HomeScreen(
                     }
                 }
 
-                UploadMode.EXISTING, UploadMode.DOWNLOAD -> {
+                UploadMode.EXISTING, UploadMode.DOWNLOAD, UploadMode.SYNC -> {
                     Spacer(Modifier.height(12.dp))
                     Text(t.repository, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 
