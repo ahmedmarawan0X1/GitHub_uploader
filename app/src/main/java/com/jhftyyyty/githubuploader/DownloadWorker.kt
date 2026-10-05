@@ -19,7 +19,7 @@ import java.io.File
 class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(app, params) {
     override suspend fun doWork(): Result {
         val token = TokenStore(applicationContext).get()
-        if (token.isBlank()) return Result.failure(workDataOf(KEY_ERROR to "GitHub token is missing"))
+        if (token.isBlank()) return Result.failure(workDataOf(KEY_ERROR to applicationContext.getString(R.string.missing_token)))
 
         val repo = RepoInfo(
             inputData.getString(KEY_OWNER).orEmpty(),
@@ -42,7 +42,7 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, repo.name + "-" + System.currentTimeMillis() + ".zip")
                     put(MediaStore.Downloads.MIME_TYPE, "application/zip")
-                    put(MediaStore.Downloads.RELATIVE_PATH, context.getString(R.string.download_folder))
+                    put(MediaStore.Downloads.RELATIVE_PATH, applicationContext.getString(R.string.download_folder))
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val u = applicationContext.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
@@ -96,8 +96,8 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
             NOTIFICATION_ID,
             NotificationCompat.Builder(applicationContext, CHANNEL)
                 .setSmallIcon(if (error) android.R.drawable.stat_notify_error else android.R.drawable.stat_sys_download_done)
-                .setContentTitle(if (error) context.getString(R.string.error) else context.getString(R.string.download_done))
-                .setContentText(if (error) context.getString(R.string.download_error) else context.getString(R.string.download_saved))
+                .setContentTitle(if (error) applicationContext.getString(R.string.error) else applicationContext.getString(R.string.download_done))
+                .setContentText(if (error) applicationContext.getString(R.string.download_error) else applicationContext.getString(R.string.download_saved))
                 .setAutoCancel(true)
                 .setOngoing(false)
                 .setOnlyAlertOnce(true)
@@ -108,7 +108,7 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
     private fun notification(d: Long, t: Long) =
         NotificationCompat.Builder(applicationContext, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle(if (t > 0) "$d / $t" else context.getString(R.string.downloading))
+            .setContentTitle(if (t > 0) "$d / $t" else applicationContext.getString(R.string.downloading))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setProgress(
@@ -121,7 +121,7 @@ class DownloadWorker(app: Context, params: WorkerParameters) : CoroutineWorker(a
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT >= 26) {
             (applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(NotificationChannel(CHANNEL, context.getString(R.string.download_channel), NotificationManager.IMPORTANCE_LOW))
+                .createNotificationChannel(NotificationChannel(CHANNEL, applicationContext.getString(R.string.download_channel), NotificationManager.IMPORTANCE_LOW))
         }
     }
 
