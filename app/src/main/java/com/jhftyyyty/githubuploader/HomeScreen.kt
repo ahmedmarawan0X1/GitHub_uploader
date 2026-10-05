@@ -73,10 +73,40 @@ internal fun HomeScreen(
         progress = 0f
     }
 
+    suspend fun refreshGitHubData() {
+        if (token.isBlank()) {
+            account = null
+            repos = emptyList()
+            selected = null
+            return
+        }
+
+        runCatching {
+            val data = withContext(Dispatchers.IO) {
+                val user = GitHubApi.currentUser(token)
+                val repositories = GitHubApi.listRepositories(token)
+                user to repositories
+            }
+
+            account = data.first.login
+            repos = data.second
+            selected = selected?.let { old ->
+                data.second.firstOrNull { it.fullName == old.fullName }
+            }
+            message = ""
+            ok = null
+        }.onFailure {
+            account = null
+            repos = emptyList()
+            selected = null
+            message = GitHubApi.friendlyError(it.message ?: t.error)
+            ok = false
+        }
+    }
+
+    // Validate the saved token and load repositories automatically when Home opens.
     LaunchedEffect(token) {
-        account = if (token.isBlank()) null else runCatching {
-            withContext(Dispatchers.IO) { GitHubApi.currentUser(token).login }
-        }.getOrNull()
+        refreshGitHubData()
     }
 
     LaunchedEffect(Unit) {
@@ -360,13 +390,7 @@ internal fun HomeScreen(
                                 enabled = token.isNotBlank() && !busy,
                                 onClick = {
                                     scope.launch {
-                                        runCatching {
-                                            repos = withContext(Dispatchers.IO) { GitHubApi.listRepositories(token) }
-                                            account = withContext(Dispatchers.IO) { GitHubApi.currentUser(token).login }
-                                        }.onFailure {
-                                            message = GitHubApi.friendlyError(it.message ?: t.error)
-                                            ok = false
-                                        }
+                                        refreshGitHubData()
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
