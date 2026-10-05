@@ -1,10 +1,14 @@
 name: Android CI
 on:
   push:
-    branches: ["main","v2-upgrade"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
