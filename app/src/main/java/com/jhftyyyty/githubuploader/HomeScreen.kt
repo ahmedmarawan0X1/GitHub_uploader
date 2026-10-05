@@ -24,7 +24,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -415,8 +414,7 @@ internal fun HomeScreen(
                                     OneTimeWorkRequestBuilder<DownloadWorker>().setInputData(d).build()
                                 )
                             } else {
-                                val dir = File(context.filesDir, "pending_uploads").apply { mkdirs() }
-                                val file = File(dir, "job_" + System.currentTimeMillis() + ".zip")
+                                val file = PendingUploadStore.create(context)
                                 withContext(Dispatchers.IO) {
                                     context.contentResolver.openInputStream(uri!!)
                                         ?.use { input -> file.outputStream().use(input::copyTo) }
