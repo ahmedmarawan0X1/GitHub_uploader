@@ -26,7 +26,7 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SettingsScreen(
+internal fun SettingsPanel(
     t: AppStrings,
     token: String,
     theme: ThemeMode,
