@@ -263,7 +263,7 @@ private fun HomeScreen(
                     else -> Unit
                 }
                 if (info.state.isFinished) {
-                    withContext(Dispatchers.IO) { runCatching { wm.pruneWork().get() } }
+                    wm.pruneWork()
                 }
             }
             delay(700)
