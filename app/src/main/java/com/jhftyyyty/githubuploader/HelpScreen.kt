@@ -46,6 +46,7 @@ internal fun HelpScreen(t: AppStrings, back: () -> Unit) {
                 HelpCard(8, t.help8)
                 HelpCard(9, t.help9)
                 HelpCard(10, t.help10)
+                HelpCard(11, t.help11)
                 Spacer(Modifier.height(18.dp))
             }
         }
