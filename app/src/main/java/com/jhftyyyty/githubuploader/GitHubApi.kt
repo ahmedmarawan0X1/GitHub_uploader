@@ -40,11 +40,68 @@ internal object GitHubApi {
         return out
     }
 
+    suspend fun previewZip(
+        context: Context,
+        filePath: String,
+        token: String,
+        mode: UploadMode,
+        existing: RepoInfo?
+    ): PreviewSummary {
+        val remote = if (mode == UploadMode.EXISTING) {
+            val selected = existing ?: error("No repository selected")
+            val target = resolveRepo(token, UploadMode.EXISTING, "", "", false, selected, false)
+            val head = branchHead(token, target.owner, target.name, target.branch)
+            tree(token, target.owner, target.name, head.treeSha)
+        } else emptyMap()
+        val rules = readIgnoreRules(filePath)
+        var files = 0
+        var additions = 0
+        var modified = 0
+        var unchanged = 0
+        var ignoredCount = 0
+        var totalBytes = 0L
+        val seen = HashSet<String>()
+
+        ZipInputStream(File(filePath).inputStream().buffered()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                coroutineContext.ensureActive()
+                if (!entry.isDirectory) {
+                    val path = safePath(entry.name)
+                    if (path != null) {
+                        if (isIgnored(path, rules)) {
+                            ignoredCount++
+                        } else {
+                            val temp = File(context.cacheDir, "preview_" + System.nanoTime() + ".bin")
+                            val hash = copyAndHash(zip, temp)
+                            temp.delete()
+                            files++
+                            seen += path
+                            totalBytes += hash.size
+                            when {
+                                remote.isEmpty() -> additions++
+                                remote[path]?.sha == hash.gitSha -> unchanged++
+                                else -> modified++
+                            }
+                        }
+                    }
+                }
+                zip.closeEntry()
+                entry = zip.nextEntry
+            }
+        }
+        val remoteOnly = if (mode == UploadMode.EXISTING) {
+            remote.keys.count { it !in seen && it != ".githubuploaderignore" }
+        } else 0
+        return PreviewSummary(files, additions, modified, unchanged, ignoredCount, remoteOnly, totalBytes)
+    }
+
     suspend fun uploadZipFile(context:Context,filePath:String,token:String,mode:UploadMode,newRepoName:String,description:String,privateRepo:Boolean,existing:RepoInfo?,resumeCheck:Boolean,progress:suspend (Int,Int,String)->Unit):String{
         val target=resolveRepo(token,mode,newRepoName,description,privateRepo,existing,resumeCheck)
         val head=branchHead(token,target.owner,target.name,target.branch)
         val remote=tree(token,target.owner,target.name,head.treeSha)
-        val total=countFiles(filePath);check(total>0){"ZIP file contains no usable files"}
+        val rules = readIgnoreRules(filePath)
+        val total=countFiles(filePath, rules);check(total>0){"ZIP file contains no usable files"}
         val seen=HashSet<String>();val treeEntries=JSONArray();var processed=0;var changed=0
         data class Pending(val path:String,val temp:File,val sha:String)
         val pending=ArrayList<Pending>()
@@ -76,7 +133,7 @@ internal object GitHubApi {
                 coroutineContext.ensureActive()
                 if(!e.isDirectory){
                     val path=safePath(e.name)
-                    if(path!=null&&!ignored(path)){
+                    if(path!=null&&!isIgnored(path, rules)){
                         processed++;seen+=path
                         val temp=File(context.cacheDir,"ghu_"+System.nanoTime()+".bin")
                         val h=copyAndHash(zip,temp)
@@ -142,7 +199,41 @@ internal object GitHubApi {
         val a=root.getJSONArray("tree");val out=HashMap<String,Remote>();for(i in 0 until a.length()){val o=a.getJSONObject(i);out[o.getString("path")]=Remote(o.optString("sha"),o.optString("type"))};return out
     }
 
-    private fun countFiles(path:String):Int{var n=0;ZipInputStream(File(path).inputStream().buffered()).use{z->var e=z.nextEntry;while(e!=null){val p=safePath(e.name);if(!e.isDirectory&&p!=null&&!ignored(p))n++;z.closeEntry();e=z.nextEntry}};return n}
+    private fun countFiles(path:String, rules: Set<String>):Int{var n=0;ZipInputStream(File(path).inputStream().buffered()).use{z->var e=z.nextEntry;while(e!=null){val p=safePath(e.name);if(!e.isDirectory&&p!=null&&!isIgnored(p,rules))n++;z.closeEntry();e=z.nextEntry}};return n}
+    private fun readIgnoreRules(path:String):Set<String>{
+        val rules=linkedSetOf<String>()
+        ZipInputStream(File(path).inputStream().buffered()).use{z->
+            var e=z.nextEntry
+            while(e!=null){
+                if(!e.isDirectory&&e.name.replace('\\','/').trimStart('/')==".githubuploaderignore"){
+                    z.bufferedReader().useLines{lines->lines.forEach{line->
+                        val rule=line.trim()
+                        if(rule.isNotEmpty()&&!rule.startsWith("#")) rules+=rule
+                    }}
+                    break
+                }
+                z.closeEntry();e=z.nextEntry
+            }
+        }
+        return rules
+    }
+    private fun isIgnored(path:String,rules:Set<String>):Boolean{
+        if(path==".githubuploaderignore") return true
+        if(path.split('/').any{it==".git"||it=="build"||it==".gradle"||it==".idea"}||path.endsWith("local.properties")||path.endsWith(".log")) return true
+        return rules.any{ruleMatches(path,it)}
+    }
+    private fun ruleMatches(path:String,raw:String):Boolean{
+        var rule=raw.replace('\\','/').trim().trimStart('/')
+        if(rule.isEmpty()) return false
+        if(rule.endsWith('/')) return path==rule.dropLast(1)||path.startsWith(rule)
+        if(rule.contains('/')){
+            val regex=rule.replace(".","\\.").replace("**",".*").replace("*","[^/]*").replace("?",".")
+            return Regex("^$regex$").matches(path)
+        }
+        val name=path.substringAfterLast('/')
+        val regex=rule.replace(".","\\.").replace("**",".*").replace("*",".*").replace("?",".")
+        return Regex("^$regex$").matches(name)
+    }
     private data class HashResult(val gitSha:String,val size:Long)
     private fun copyAndHash(input:InputStream,temp:File):HashResult{
         val b=ByteArray(64*1024);var size=0L
@@ -172,10 +263,21 @@ internal object GitHubApi {
     private class NonClosingOutputStream(private val delegate:OutputStream):OutputStream(){override fun write(b:Int)=delegate.write(b);override fun write(b:ByteArray,off:Int,len:Int)=delegate.write(b,off,len);override fun flush()=delegate.flush();override fun close(){flush()}}
 
     private fun safePath(raw:String):String?{val p=raw.replace('\\','/').trimStart('/');if(p.isBlank()||p.startsWith("__MACOSX/")||p.split('/').any{it==".."||it.isBlank()&&p.contains("//")})return null;return p}
-    private fun ignored(p:String)=p.split('/').any{it==".git"||it=="build"||it==".gradle"||it==".idea"}||p.endsWith("local.properties")||p.endsWith(".log")
+
     private fun ByteArray.toHex()=joinToString(""){"%02x".format(it)}
     private fun enc(s:String)=URLEncoder.encode(s,"UTF-8").replace("+","%20")
     private data class R(val code:Int,val body:String)
+    internal fun friendlyError(message:String):String{
+        val m=message.lowercase()
+        return when{
+            m.contains("unknownhost")||m.contains("unable to resolve host")||m.contains("timeout")||m.contains("connection") ->
+                "تعذر الاتصال بالإنترنت. سيُستأنف الرفع عند عودة الاتصال."
+            m.contains("90 mb")||m.contains("exceeds") -> "يوجد ملف أكبر من الحد المسموح وهو 90 MB."
+            m.contains("token is missing") -> "أضف رمز GitHub من الإعدادات أولًا."
+            else -> message
+        }
+    }
+
     private fun checkOk(r:R,msg:String){
         if(r.code in 200..299) return
         val body=r.body
