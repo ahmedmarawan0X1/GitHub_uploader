@@ -53,30 +53,33 @@ internal fun SettingsPanel(
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(t.settings, fontWeight = FontWeight.Bold)
-                        Text(t.account, style = MaterialTheme.typography.labelMedium)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, t.back) }
-                }
-            )
-
             Column(
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                SectionTitle(Icons.Default.Key, t.token)
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(
+                        t.settings,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        t.account,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                SettingsSectionLabel(Icons.Default.Key, t.token)
 
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
@@ -84,7 +87,7 @@ internal fun SettingsPanel(
                             onValueChange = { tokenValid = null; account = null; changeToken(it) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text(t.token) },
-                            placeholder = { Text("ghp_…") },
+                            placeholder = { Text(t.tokenPlaceholder) },
                             singleLine = true,
                             visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
@@ -149,7 +152,15 @@ internal fun SettingsPanel(
                     }
                 }
 
-                SectionTitle(Icons.Default.Tune, t.theme)
+                SettingsSectionLabel(Icons.Default.Tune, t.theme)
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    Column(Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 SettingRow(
                     Icons.Default.DarkMode,
                     t.theme,
@@ -186,14 +197,36 @@ internal fun SettingsPanel(
                     )
                 }
 
-                SettingToggleRow(
-                    Icons.Default.AutoAwesome,
-                    t.autoNaming,
-                    t.autoNamingSub,
-                    autoNaming,
-                    changeAutoNaming
-                )
+                    SettingToggleRow(
+                        Icons.Default.AutoAwesome,
+                        t.autoNaming,
+                        t.autoNamingSub,
+                        autoNaming,
+                        changeAutoNaming
+                    )
+                    }
+                }
 
+                SettingsSectionLabel(Icons.Default.Tune, t.language)
+                SettingRow(
+                    Icons.Default.Language,
+                    t.language,
+                    when (language) {
+                        LanguageMode.SYSTEM -> t.system
+                        LanguageMode.ARABIC -> t.arabic
+                        LanguageMode.ENGLISH -> t.english
+                    }
+                ) {
+                    changeLanguage(
+                        when (language) {
+                            LanguageMode.SYSTEM -> LanguageMode.ARABIC
+                            LanguageMode.ARABIC -> LanguageMode.ENGLISH
+                            LanguageMode.ENGLISH -> LanguageMode.SYSTEM
+                        }
+                    )
+                }
+
+                SettingsSectionLabel(Icons.Default.MoreHoriz, t.help)
                 SettingRow(Icons.Default.Link, t.projectLink, t.openProject) {
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DEFAULT_PROJECT_URL))) }
                 }
@@ -207,14 +240,14 @@ internal fun SettingsPanel(
                     Text(t.help)
                 }
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(4.dp))
             }
         }
     }
 }
 
 @Composable
-private fun SectionTitle(icon: ImageVector, title: String) {
+private fun SettingsSectionLabel(icon: ImageVector, title: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(8.dp))
