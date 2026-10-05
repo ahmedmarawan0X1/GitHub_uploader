@@ -103,6 +103,12 @@ class MainActivity : ComponentActivity() {
         handleIncomingIntent(intent)
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        selectedUri = null
+        selectedName = ""
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onCreate(state: Bundle?) {
         installSplashScreen()
         super.onCreate(state)
@@ -969,6 +975,7 @@ private fun HelpScreen(t: AppStrings, back: () -> Unit) {
                 HelpCard(9, t.help9)
                 HelpCard(10, t.help10)
                 HelpCard(11, t.help11)
+                HelpCard(12, t.help12)
                 Spacer(Modifier.height(18.dp))
             }
         }
