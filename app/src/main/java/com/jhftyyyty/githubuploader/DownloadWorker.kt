@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import android.os.Build
 import android.provider.MediaStore
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import java.io.File
