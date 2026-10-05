@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">GitHub uploader</string>
     <string name="app">GitHub uploader</string>
     <string name="subtitle">إدارة مشاريع GitHub من الهاتف</string>
     <string name="token">رمز GitHub</string>
