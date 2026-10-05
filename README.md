@@ -13,7 +13,6 @@ Android app for managing GitHub repositories directly from a phone.
 - Background WorkManager jobs with progress notifications.
 - GitHub token storage is encrypted with Android Keystore.
 - Manual Personal Access Token remains fully supported.
-- Optional GitHub browser/device login can be enabled with a GitHub OAuth/App client ID.
 - Cleaner Material 3 interface with Arabic/English support and no decorative emoji labels.
 - Release signing credentials are no longer stored in the repository.
 
@@ -22,18 +21,6 @@ Android app for managing GitHub repositories directly from a phone.
 ### Personal Access Token
 
 This is the simplest and most reliable option for direct API uploads. Use a Fine-grained token with access to the repositories you need and repository Contents permission.
-
-### Browser login
-
-Browser login uses GitHub OAuth Device Flow. The Android build must be configured with a GitHub application client ID and Device Flow enabled for that application.
-
-For local builds, add:
-
-`githubClientId=YOUR_CLIENT_ID`
-
-to your local Gradle properties.
-
-Do not put a client secret in the Android app.
 
 ## Large files
 
@@ -45,7 +32,7 @@ GitHub's Git database has file-size limits. The app rejects individual ZIP entri
 
 **Exact Sync** makes the Git tree match the selected ZIP and deletes remote files that are absent from the ZIP.
 
-The app ignores common generated/local content such as `.git/`, `build/`, `.gradle/`, `.idea/`, `local.properties`, and log files.
+The app uses GitHub API authentication with a Personal Access Token. The app ignores common generated/local content such as `.git/`, `build/`, `.gradle/`, `.idea/`, `local.properties`, and log files.
 
 ## CI
 
@@ -55,4 +42,4 @@ The GitHub Actions workflow builds and lints the release variant. Signing is int
 
 The old committed release keystore and hardcoded signing credentials were removed from the V2 branch. If that key was ever used for a distributed application, treat it as compromised and rotate the signing strategy as appropriate.
 
-Project: https://github.com/jhftyyyty/GitHub_uploader
+Project: https://github.com/ahmedmarawan0X1/GitHub_uploader
