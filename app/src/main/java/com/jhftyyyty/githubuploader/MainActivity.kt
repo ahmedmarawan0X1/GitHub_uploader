@@ -196,7 +196,6 @@ private fun HomeScreen(
     var progressText by remember { mutableStateOf("") }
     var result by remember { mutableStateOf("") }
     var showToken by remember { mutableStateOf(false) }
-    var oauthDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(name, autoNaming, mode) {
@@ -286,7 +285,6 @@ private fun HomeScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = help) { Icon(Icons.Default.HelpOutline, t.help) }
                     IconButton(onClick = settings) { Icon(Icons.Default.Settings, t.settings) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -347,17 +345,6 @@ private fun HomeScreen(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (BuildConfig.GITHUB_CLIENT_ID.isNotBlank()) {
-                            Button(
-                                enabled = !busy,
-                                onClick = { oauthDialog = true },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.Language, null)
-                                Spacer(Modifier.width(6.dp))
-                                Text(t.browserLogin)
-                            }
-                        }
                         OutlinedButton(
                             onClick = {
                                 context.startActivity(
@@ -367,6 +354,14 @@ private fun HomeScreen(
                             modifier = Modifier.weight(1f)
                         ) {
                             Text(t.createToken)
+                        }
+                        OutlinedButton(
+                            onClick = help,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.HelpOutline, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(t.help)
                         }
                     }
                 }
@@ -709,25 +704,6 @@ private fun HomeScreen(
         }
     }
 
-    if (oauthDialog) {
-        BrowserLoginDialog(
-            t,
-            { oauthDialog = false },
-            { newToken ->
-                token = newToken
-                store.save(newToken)
-                scope.launch {
-                    account = try {
-                        withContext(Dispatchers.IO) { GitHubApi.currentUser(newToken).login }
-                    } catch (_: Exception) {
-                        null
-                    }
-                }
-                oauthDialog = false
-            }
-        )
-    }
-}
 
 @Composable
 private fun OperationButton(
@@ -784,62 +760,6 @@ private fun StatusCard(success: Boolean, message: String, modifier: Modifier = M
             Text(message, fontWeight = FontWeight.Medium)
         }
     }
-}
-
-@Composable
-private fun BrowserLoginDialog(t: AppStrings, close: () -> Unit, done: (String) -> Unit) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var device by remember { mutableStateOf<GitHubOAuth.DeviceCode?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = close,
-        title = { Text(t.browserLogin) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(if (device == null) t.browserLoginHint else t.enterCode + ": " + device!!.userCode)
-                if (device != null) {
-                    OutlinedButton(
-                        { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(device!!.verificationUri))) },
-                        Modifier.fillMaxWidth()
-                    ) {
-                        Text(t.openBrowser)
-                    }
-                }
-                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
-            }
-        },
-        confirmButton = {
-            Button(
-                enabled = !busy,
-                onClick = {
-                    scope.launch {
-                        busy = true
-                        error = ""
-                        try {
-                            val fresh = device == null
-                            val d = device ?: withContext(Dispatchers.IO) {
-                                GitHubOAuth.requestDeviceCode()
-                            }.also { device = it }
-                            if (fresh) {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(d.verificationUri)))
-                            }
-                            done(withContext(Dispatchers.IO) { GitHubOAuth.pollForToken(d) })
-                        } catch (e: Exception) {
-                            error = e.message ?: t.error
-                        } finally {
-                            busy = false
-                        }
-                    }
-                }
-            ) {
-                Text(if (busy) t.waiting else if (device == null) t.connect else t.check)
-            }
-        },
-        dismissButton = { TextButton(close) { Text(t.cancel) } }
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
