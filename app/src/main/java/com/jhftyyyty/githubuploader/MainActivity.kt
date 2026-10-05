@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -171,22 +170,6 @@ class MainActivity : ComponentActivity() {
                                     icon = { Icon(Icons.Default.Settings, null) },
                                     label = { Text(t.settings) }
                                 )
-                                NavigationBarItem(
-                                    selected = screen == Screen.HELP,
-                                    colors = NavigationBarItemDefaults.colors(
-                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    onClick = {
-                                        helpOrigin = screen
-                                        screen = Screen.HELP
-                                    },
-                                    icon = { Icon(Icons.Default.HelpOutline, null) },
-                                    label = { Text(t.help) }
-                                )
                             }
                         }
                     }
@@ -211,7 +194,6 @@ class MainActivity : ComponentActivity() {
                                     )
                                 },
                                 settings = { screen = Screen.SETTINGS },
-                                help = { helpOrigin = Screen.HOME; screen = Screen.HELP }
                             )
 
                             Screen.SETTINGS -> SettingsPanel(
