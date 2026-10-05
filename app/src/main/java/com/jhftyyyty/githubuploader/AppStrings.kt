@@ -89,6 +89,7 @@ internal class AppStrings(context: Context, language: LanguageMode) {
     val startNow get() = get(R.string.start_now)
     val close get() = get(R.string.close)
     val ignoreFile get() = get(R.string.ignore_file)
+    val tokenPlaceholder get() = get(R.string.token_placeholder)
     val help1 get() = get(R.string.help1)
     val help2 get() = get(R.string.help2)
     val help3 get() = get(R.string.help3)
