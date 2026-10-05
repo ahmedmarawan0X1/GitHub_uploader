@@ -145,7 +145,7 @@ internal fun SettingsPanel(
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, null)
+                            Icon(Icons.Default.OpenInNew, null)
                             Spacer(Modifier.width(8.dp))
                             Text(t.createToken)
                         }
