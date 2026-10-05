@@ -147,9 +147,6 @@ class MainActivity : ComponentActivity() {
                     Screen.HOME -> HomeScreen(
                         t, selectedUri, selectedName, prefs.getBoolean(PREF_AUTO_NAMING, true),
                         { picker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) },
-                        { settingsAutoNaming ->
-                            prefs.edit().putBoolean(PREF_AUTO_NAMING, settingsAutoNaming).apply()
-                        },
                         { screen = Screen.SETTINGS },
                         { helpOrigin = Screen.HOME; screen = Screen.HELP }
                     )
@@ -176,7 +173,6 @@ private fun HomeScreen(
     name: String,
     autoNaming: Boolean,
     pick: () -> Unit,
-    changeAutoNaming: (Boolean) -> Unit,
     settings: () -> Unit,
     help: () -> Unit
 ) {
@@ -914,13 +910,13 @@ private fun SettingsScreen(
                     )
                 }
 
-                SettingRow(
+                SettingToggleRow(
                     Icons.Default.AutoAwesome,
                     t.autoNaming,
-                    t.autoNamingSub
-                ) {
-                    changeAutoNaming(!autoNaming)
-                }
+                    t.autoNamingSub,
+                    autoNaming,
+                    changeAutoNaming
+                )
 
                 SettingRow(
                     Icons.Default.Link,
@@ -980,6 +976,37 @@ private fun SettingRow(
                 null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun SettingToggleRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    sub: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
+    ) {
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.onSurface)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(2.dp))
+                Text(sub, style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
     }
 }
