@@ -10,6 +10,10 @@ import java.net.URL
 import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.zip.ZipInputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -38,6 +42,28 @@ internal object GitHubApi {
         val remote=tree(token,target.owner,target.name,head.treeSha)
         val total=countFiles(filePath);check(total>0){"ZIP file contains no usable files"}
         val seen=HashSet<String>();val treeEntries=JSONArray();var processed=0;var changed=0
+        data class Pending(val path:String,val temp:File)
+        val pending=ArrayList<Pending>()
+
+        suspend fun uploadBatch() {
+            if (pending.isEmpty()) return
+            val batch=pending.toList()
+            pending.clear()
+            val results=coroutineScope {
+                batch.map { item ->
+                    async(Dispatchers.IO) {
+                        item to createBlob(token,target.owner,target.name,item.temp)
+                    }
+                }.awaitAll()
+            }
+            for ((item, sha) in results) {
+                changed++
+                treeEntries.put(JSONObject().put("path",item.path).put("mode","100644").put("type","blob").put("sha",sha))
+                item.temp.delete()
+                progress(processed,total,item.path)
+            }
+        }
+
         ZipInputStream(File(filePath).inputStream().buffered()).use{zip->
             var e=zip.nextEntry
             while(e!=null){
@@ -48,14 +74,18 @@ internal object GitHubApi {
                         val temp=File(context.cacheDir,"ghu_"+System.nanoTime()+".bin")
                         val h=copyAndHash(zip,temp)
                         if(remote[path]?.sha!=h.gitSha){
-                            changed++;val sha=createBlob(token,target.owner,target.name,temp);treeEntries.put(JSONObject().put("path",path).put("mode","100644").put("type","blob").put("sha",sha));progress(processed,total,path)
-                        }else progress(processed,total,"Unchanged • "+path)
-                        temp.delete()
+                            pending += Pending(path,temp)
+                            if (pending.size >= 4) uploadBatch()
+                        }else{
+                            temp.delete()
+                            progress(processed,total,"Unchanged • "+path)
+                        }
                     }
                 }
                 zip.closeEntry();e=zip.nextEntry
             }
         }
+        uploadBatch()
         if(mode==UploadMode.SYNC)remote.keys.filter{it !in seen&&remote[it]?.type=="blob"}.forEach{treeEntries.put(JSONObject().put("path",it).put("mode","100644").put("type","blob").put("sha",JSONObject.NULL));changed++}
         if(treeEntries.length()==0){progress(total,total,"No changes");return target.url}
         val tree=request("POST",API+"/repos/"+enc(target.owner)+"/"+enc(target.name)+"/git/trees",token,JSONObject().put("base_tree",head.treeSha).put("tree",treeEntries).toString());checkOk(tree,"Git tree creation failed")
