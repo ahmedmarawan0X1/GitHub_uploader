@@ -138,25 +138,25 @@ internal fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
         ) {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(t.app, fontWeight = FontWeight.Bold)
-                        Text(t.subtitle, style = MaterialTheme.typography.labelMedium)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = settings) { Icon(Icons.Default.Settings, t.settings) }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
+            Spacer(Modifier.height(8.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    t.app,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
-            )
+                Text(
+                    t.subtitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(18.dp))
 
             ElevatedCard(
                 colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -210,31 +210,19 @@ internal fun HomeScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OperationButton(
-                            text = t.newRepo,
-                            selected = mode == UploadMode.NEW,
-                            enabled = !busy,
-                            onClick = { mode = UploadMode.NEW; clearFeedback() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        OperationButton(
-                            text = t.existing,
-                            selected = mode == UploadMode.EXISTING,
-                            enabled = !busy,
-                            onClick = { mode = UploadMode.EXISTING; clearFeedback() },
-                            modifier = Modifier.weight(1f)
-                        )
-                        OperationButton(
-                            text = t.download,
-                            selected = mode == UploadMode.DOWNLOAD,
-                            enabled = !busy,
-                            onClick = { mode = UploadMode.DOWNLOAD; clearFeedback() },
-                            modifier = Modifier.weight(1f)
-                        )
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        val labels = listOf(t.newRepo, t.existing, t.download)
+                        val modes = listOf(UploadMode.NEW, UploadMode.EXISTING, UploadMode.DOWNLOAD)
+                        modes.forEachIndexed { index, item ->
+                            SegmentedButton(
+                                selected = mode == item,
+                                onClick = { if (!busy) { mode = item; clearFeedback() } },
+                                shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(labels[index], maxLines = 1)
+                            }
+                        }
                     }
                 }
             }
