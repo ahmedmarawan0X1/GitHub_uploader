@@ -21,6 +21,7 @@ class UploadWorker(app:Context,params:WorkerParameters):CoroutineWorker(app,para
    val url=GitHubApi.uploadZipFile(applicationContext,path,token,mode,inputData.getString(KEY_NEW_REPO).orEmpty(),inputData.getString(KEY_DESCRIPTION).orEmpty(),inputData.getBoolean(KEY_PRIVATE,true),existing,runAttemptCount>0){d,t,msg->setProgress(workDataOf(KEY_DONE to d,KEY_TOTAL to t,KEY_TEXT to msg));notifyProgress(d,t)}
    Result.success(workDataOf(KEY_RESULT_URL to url,KEY_TEXT to "Completed"))
   }catch(e:CancellationException){
+   File(path).delete()
    throw e
   }catch(e:IOException){setProgress(workDataOf(KEY_TEXT to "Internet connection lost. Upload will resume automatically."));Result.retry()
   }catch(e:Exception){File(path).delete();Result.failure(workDataOf(KEY_ERROR to(e.message?:e.javaClass.simpleName)))}
