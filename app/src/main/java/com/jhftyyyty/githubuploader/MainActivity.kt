@@ -189,7 +189,6 @@ private fun HomeScreen(
     var token by remember { mutableStateOf(store.get()) }
     var account by remember { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(UploadMode.NEW) }
-    var sync by remember { mutableStateOf(false) }
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
     var selected by remember { mutableStateOf<RepoInfo?>(null) }
     var repoName by remember { mutableStateOf("") }
@@ -390,10 +389,10 @@ private fun HomeScreen(
                     modifier = Modifier.weight(1f)
                 )
                 OperationButton(
-                    text = t.updateRepo,
-                    selected = mode == UploadMode.EXISTING || mode == UploadMode.SYNC,
+                    text = t.existing,
+                    selected = mode == UploadMode.EXISTING,
                     enabled = !busy,
-                    onClick = { mode = UploadMode.EXISTING; sync = false; clearFeedback() },
+                    onClick = { mode = UploadMode.EXISTING; clearFeedback() },
                     modifier = Modifier.weight(1f)
                 )
                 OperationButton(
@@ -432,7 +431,7 @@ private fun HomeScreen(
                     }
                 }
 
-                UploadMode.EXISTING, UploadMode.DOWNLOAD, UploadMode.SYNC -> {
+                UploadMode.EXISTING, UploadMode.DOWNLOAD -> {
                     Spacer(Modifier.height(12.dp))
                     Text(t.repository, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
 
@@ -493,25 +492,6 @@ private fun HomeScreen(
                         Text(t.refreshRepositories)
                     }
 
-                    if (repos.isNotEmpty() && selected != null && mode == UploadMode.EXISTING) {
-                        Spacer(Modifier.height(8.dp))
-                        ElevatedCard(
-                            colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Switch(sync, { sync = it })
-                                Spacer(Modifier.width(8.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(t.syncMode, fontWeight = FontWeight.SemiBold)
-                                    Text(t.syncHint, style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
@@ -555,9 +535,11 @@ private fun HomeScreen(
                 }
 
             Button(
-                enabled = enabled,
+                enabled = if (busy) true else enabled,
                 onClick = {
-                    scope.launch {
+                    if (busy) {
+                        WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+                    } else scope.launch {
                         busy = true
                         ok = null
                         message = ""
@@ -583,13 +565,7 @@ private fun HomeScreen(
                                         ?.use { input -> file.outputStream().use(input::copyTo) }
                                         ?: error(t.openZip)
                                 }
-                                val actual = if (mode == UploadMode.NEW) {
-                                    UploadMode.NEW.name
-                                } else if (sync) {
-                                    UploadMode.SYNC.name
-                                } else {
-                                    UploadMode.EXISTING.name
-                                }
+                                val actual = if (mode == UploadMode.NEW) UploadMode.NEW.name else UploadMode.EXISTING.name
                                 val d = workDataOf(
                                     UploadWorker.KEY_FILE_PATH to file.absolutePath,
                                     UploadWorker.KEY_MODE to actual,
@@ -601,10 +577,19 @@ private fun HomeScreen(
                                     UploadWorker.KEY_FULL_NAME to selected?.fullName.orEmpty(),
                                     UploadWorker.KEY_BRANCH to selected?.defaultBranch.orEmpty()
                                 )
+                                val constraints = Constraints.Builder()
+                                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                                    .setRequiresStorageNotLow(true)
+                                    .build()
+                                val request = OneTimeWorkRequestBuilder<UploadWorker>()
+                                    .setInputData(d)
+                                    .setConstraints(constraints)
+                                    .setBackoffCriteria(BackoffPolicy.LINEAR, 10, java.util.concurrent.TimeUnit.SECONDS)
+                                    .build()
                                 WorkManager.getInstance(context).enqueueUniqueWork(
                                     WORK_NAME,
                                     ExistingWorkPolicy.REPLACE,
-                                    OneTimeWorkRequestBuilder<UploadWorker>().setInputData(d).build()
+                                    request
                                 )
                             }
                         } catch (e: Exception) {
@@ -619,7 +604,7 @@ private fun HomeScreen(
             ) {
                 Icon(if (mode == UploadMode.DOWNLOAD) Icons.Default.Download else Icons.Default.CloudUpload, null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (busy) t.working else if (mode == UploadMode.DOWNLOAD) t.download else t.start)
+                Text(if (busy) t.cancel else if (mode == UploadMode.DOWNLOAD) t.download else t.start)
             }
 
             if (busy || progressText.isNotBlank()) {
@@ -633,6 +618,10 @@ private fun HomeScreen(
                 if (progressText.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Text(progressText, style = MaterialTheme.typography.bodySmall)
+                }
+                if (busy && mode != UploadMode.DOWNLOAD) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(t.resuming, style = MaterialTheme.typography.labelSmall)
                 }
             }
 
@@ -974,8 +963,6 @@ private fun HelpScreen(t: AppStrings, back: () -> Unit) {
                 HelpCard(8, t.help8)
                 HelpCard(9, t.help9)
                 HelpCard(10, t.help10)
-                HelpCard(11, t.help11)
-                HelpCard(12, t.help12)
                 Spacer(Modifier.height(18.dp))
             }
         }
