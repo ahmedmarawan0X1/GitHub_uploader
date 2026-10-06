@@ -37,11 +37,12 @@ internal fun HomeScreen(
     autoNaming: Boolean,
     pick: () -> Unit,
     settings: () -> Unit,
-    imeVisible: Boolean
+    imeVisible: Boolean,
+    account: String?,
+    onAccountChanged: (String?) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-     var account by remember { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(UploadMode.NEW) }
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
     var selected by remember { mutableStateOf<RepoInfo?>(null) }
@@ -76,7 +77,7 @@ internal fun HomeScreen(
 
     suspend fun refreshGitHubData() {
         if (token.isBlank()) {
-            account = null
+            onAccountChanged(null)
             repos = emptyList()
             selected = null
             return
@@ -89,7 +90,7 @@ internal fun HomeScreen(
                 user to repositories
             }
 
-            account = data.first.login
+            onAccountChanged(data.first.login)
             repos = data.second
             selected = selected?.let { old ->
                 data.second.firstOrNull { it.fullName == old.fullName }
@@ -97,7 +98,7 @@ internal fun HomeScreen(
             message = ""
             ok = null
         }.onFailure {
-            account = null
+            onAccountChanged(null)
             repos = emptyList()
             selected = null
             message = GitHubApi.friendlyError(it.message ?: t.error)
@@ -222,7 +223,7 @@ internal fun HomeScreen(
                         Icons.Default.AccountCircle,
                         null,
                         Modifier
-                            .align(Alignment.CenterEnd)
+                            .align(Alignment.CenterStart)
                             .size(42.dp),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
@@ -243,7 +244,7 @@ internal fun HomeScreen(
                             Icons.Default.CheckCircle,
                             null,
                             Modifier
-                                .align(Alignment.CenterStart)
+                                .align(Alignment.CenterEnd)
                                 .size(24.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
