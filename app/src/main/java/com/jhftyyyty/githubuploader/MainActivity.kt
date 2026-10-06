@@ -27,8 +27,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.WorkManager
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -135,12 +138,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val systemLayoutDirection = LocalLayoutDirection.current
+            val layoutDirection = when (language) {
+                LanguageMode.ARABIC -> LayoutDirection.Rtl
+                LanguageMode.ENGLISH -> LayoutDirection.Ltr
+                LanguageMode.SYSTEM -> systemLayoutDirection
+            }
+
             AppTheme(dark) {
                 SideEffect { updateSystemBars(window, dark) }
 
-                val imeInsets = WindowInsets.ime
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides layoutDirection
+                ) {
+                    val imeInsets = WindowInsets.ime
 
-                Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize()) {
                     when (screen) {
                         Screen.HOME -> HomeScreen(
                             t = t,
@@ -241,6 +254,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                }
                 }
             }
         }
