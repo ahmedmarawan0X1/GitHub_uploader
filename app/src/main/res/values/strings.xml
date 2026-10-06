@@ -97,4 +97,11 @@
     <string name="download_saved">File saved to Download/GitHubUploader</string>
     <string name="missing_token">GitHub access token is missing.</string>
     <string name="home">Home</string>
+
+<string name="help_quick_guide">Quick guide</string>
+<string name="help_quick_guide_sub">Everything you need to create a token and use the main upload and download features.</string>
+<string name="help_section_token">Access token</string>
+<string name="help_section_security">Permissions &amp; security</string>
+<string name="help_section_upload">Upload</string>
+<string name="help_section_download">Download</string>
 </resources>

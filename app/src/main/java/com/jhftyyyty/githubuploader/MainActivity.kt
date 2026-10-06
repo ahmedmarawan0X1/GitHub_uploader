@@ -11,16 +11,27 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.WorkManager
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -108,6 +119,9 @@ class MainActivity : ComponentActivity() {
                 )
             }
             var token by remember { mutableStateOf(TokenStore(this@MainActivity).get()) }
+            var account by remember { mutableStateOf<String?>(null) }
+            var avatarUrl by remember { mutableStateOf(prefs.getString("github_avatar_url", null)) }
+            var avatarFailed by remember { mutableStateOf(false) }
             var screen by remember { mutableStateOf(Screen.HOME) }
             var helpOrigin by remember { mutableStateOf(Screen.HOME) }
 
@@ -126,16 +140,107 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val systemLayoutDirection = LocalLayoutDirection.current
+            val layoutDirection = when (language) {
+                LanguageMode.ARABIC -> LayoutDirection.Rtl
+                LanguageMode.ENGLISH -> LayoutDirection.Ltr
+                LanguageMode.SYSTEM -> systemLayoutDirection
+            }
+
             AppTheme(dark) {
                 SideEffect { updateSystemBars(window, dark) }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    bottomBar = {
-                        if (screen != Screen.HELP) {
+                CompositionLocalProvider(
+                    LocalLayoutDirection provides layoutDirection
+                ) {
+                    val imeInsets = WindowInsets.ime
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val imeVisible = imeInsets.getBottom(density) > 0
+
+                    Box(Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            when (screen) {
+                                Screen.HOME -> HomeScreen(
+                            t = t,
+                            token = token,
+                            uri = selectedUri,
+                            name = selectedName,
+                            autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
+                            pick = {
+                                picker.launch(
+                                    arrayOf(
+                                        "application/zip",
+                                        "application/x-zip-compressed",
+                                        "application/octet-stream"
+                                    )
+                                )
+                            },
+                            settings = { screen = Screen.SETTINGS },
+                            account = account,
+                            onAccountChanged = { account = it },
+                            avatarUrl = avatarUrl,
+                            avatarFailed = avatarFailed,
+                            onAvatarUrlChanged = {
+                                avatarUrl = it
+                                prefs.edit().putString("github_avatar_url", it).apply()
+                            },
+                            onAvatarFailedChanged = { avatarFailed = it },
+                        )
+
+                        Screen.SETTINGS -> SettingsPanel(
+                            t = t,
+                            token = token,
+                            theme = theme,
+                            language = language,
+                            autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
+                            changeToken = { value ->
+                                token = value
+                                if (value.isBlank()) {
+                                    account = null
+                                    avatarUrl = null
+                                    avatarFailed = false
+                                    prefs.edit().remove("github_avatar_url").apply()
+                                }
+                                TokenStore(this@MainActivity).save(value)
+                            },
+                            changeTheme = { value ->
+                                theme = value
+                                prefs.edit().putString(PREF_THEME, value.name).apply()
+                            },
+                            changeLanguage = { value ->
+                                language = value
+                                prefs.edit().putString(PREF_LANGUAGE, value.name).apply()
+                            },
+                            changeAutoNaming = { value ->
+                                prefs.edit().putBoolean(PREF_AUTO_NAMING, value).apply()
+                            },
+                            back = { screen = Screen.HOME },
+                            help = { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
+                        )
+
+                                Screen.HELP -> HelpScreen(t) { screen = helpOrigin }
+                            }
+                        }
+
+                        if (screen != Screen.HELP && !imeVisible) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .height(92.dp)
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                             NavigationBar(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(76.dp)
+                                    .clip(MaterialTheme.shapes.extraLarge),
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                tonalElevation = 0.dp
+                                tonalElevation = 0.dp,
+                                windowInsets = WindowInsets(0, 0, 0, 0)
                             ) {
                                 NavigationBarItem(
                                     selected = screen == Screen.HOME,
@@ -163,77 +268,10 @@ class MainActivity : ComponentActivity() {
                                     icon = { Icon(Icons.Default.Settings, null) },
                                     label = { Text(t.settings) }
                                 )
-                                NavigationBarItem(
-                                    selected = screen == Screen.HELP,
-                                    colors = NavigationBarItemDefaults.colors(
-                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    onClick = {
-                                        helpOrigin = screen
-                                        screen = Screen.HELP
-                                    },
-                                    icon = { Icon(Icons.Default.HelpOutline, null) },
-                                    label = { Text(t.help) }
-                                )
                             }
                         }
                     }
-                ) { paddingValues ->
-                    androidx.compose.foundation.layout.Box(
-                        Modifier.fillMaxSize().padding(paddingValues)
-                    ) {
-                        when (screen) {
-                            Screen.HOME -> HomeScreen(
-                                t = t,
-                                token = token,
-                                uri = selectedUri,
-                                name = selectedName,
-                                autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
-                                pick = {
-                                    picker.launch(
-                                        arrayOf(
-                                            "application/zip",
-                                            "application/x-zip-compressed",
-                                            "application/octet-stream"
-                                        )
-                                    )
-                                },
-                                settings = { screen = Screen.SETTINGS },
-                                help = { helpOrigin = Screen.HOME; screen = Screen.HELP }
-                            )
-
-                            Screen.SETTINGS -> SettingsPanel(
-                                t = t,
-                                token = token,
-                                theme = theme,
-                                language = language,
-                                autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
-                                changeToken = { value ->
-                                    token = value
-                                    TokenStore(this@MainActivity).save(value)
-                                },
-                                changeTheme = { value ->
-                                    theme = value
-                                    prefs.edit().putString(PREF_THEME, value.name).apply()
-                                },
-                                changeLanguage = { value ->
-                                    language = value
-                                    prefs.edit().putString(PREF_LANGUAGE, value.name).apply()
-                                },
-                                changeAutoNaming = { value ->
-                                    prefs.edit().putBoolean(PREF_AUTO_NAMING, value).apply()
-                                },
-                                back = { screen = Screen.HOME },
-                                help = { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
-                            )
-
-                            Screen.HELP -> HelpScreen(t) { screen = helpOrigin }
-                        }
-                    }
+                }
                 }
             }
         }

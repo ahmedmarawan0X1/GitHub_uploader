@@ -97,4 +97,11 @@
     <string name="download_saved">تم حفظ الملف في Download/GitHubUploader</string>
     <string name="missing_token">لم تتم إضافة رمز وصول GitHub.</string>
     <string name="home">الرئيسية</string>
+
+<string name="help_quick_guide">دليل سريع</string>
+<string name="help_quick_guide_sub">كل ما تحتاجه لإعداد الرمز واستخدام وظائف الرفع والتنزيل الأساسية.</string>
+<string name="help_section_token">إعداد رمز الوصول</string>
+<string name="help_section_security">الصلاحيات والأمان</string>
+<string name="help_section_upload">الرفع</string>
+<string name="help_section_download">التنزيل</string>
 </resources>

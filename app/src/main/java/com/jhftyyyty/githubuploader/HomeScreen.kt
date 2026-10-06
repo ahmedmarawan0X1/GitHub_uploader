@@ -7,12 +7,15 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +23,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.work.*
+import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -37,11 +41,17 @@ internal fun HomeScreen(
     autoNaming: Boolean,
     pick: () -> Unit,
     settings: () -> Unit,
-    help: () -> Unit
+    account: String?,
+    onAccountChanged: (String?) -> Unit,
+    avatarUrl: String?,
+    avatarFailed: Boolean,
+    onAvatarUrlChanged: (String?) -> Unit,
+    onAvatarFailedChanged: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-     var account by remember { mutableStateOf<String?>(null) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
     var mode by remember { mutableStateOf(UploadMode.NEW) }
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
     var selected by remember { mutableStateOf<RepoInfo?>(null) }
@@ -58,6 +68,7 @@ internal fun HomeScreen(
     var previewFile by remember { mutableStateOf<File?>(null) }
     var preparing by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+    var workObserved by remember { mutableStateOf(false) }
 
     LaunchedEffect(name, autoNaming, mode) {
         if (autoNaming && mode == UploadMode.NEW && name.isNotBlank()) {
@@ -75,7 +86,7 @@ internal fun HomeScreen(
 
     suspend fun refreshGitHubData() {
         if (token.isBlank()) {
-            account = null
+            onAccountChanged(null)
             repos = emptyList()
             selected = null
             return
@@ -88,7 +99,9 @@ internal fun HomeScreen(
                 user to repositories
             }
 
-            account = data.first.login
+            onAccountChanged(data.first.login)
+            onAvatarUrlChanged(data.first.avatarUrl)
+            onAvatarFailedChanged(false)
             repos = data.second
             selected = selected?.let { old ->
                 data.second.firstOrNull { it.fullName == old.fullName }
@@ -96,7 +109,9 @@ internal fun HomeScreen(
             message = ""
             ok = null
         }.onFailure {
-            account = null
+            onAccountChanged(null)
+            onAvatarUrlChanged(null)
+            onAvatarFailedChanged(false)
             repos = emptyList()
             selected = null
             message = GitHubApi.friendlyError(it.message ?: t.error)
@@ -127,27 +142,36 @@ internal fun HomeScreen(
                 progressText = info.progress.getString(UploadWorker.KEY_TEXT).orEmpty()
 
                 when (info.state) {
+                    WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> {
+                        workObserved = true
+                    }
                     WorkInfo.State.SUCCEEDED -> {
                         busy = false
-                        ok = true
-                        message = if (mode == UploadMode.DOWNLOAD) t.downloadDone else t.done
-                        result = if (mode == UploadMode.DOWNLOAD) {
-                            info.outputData.getString(DownloadWorker.KEY_RESULT_PATH).orEmpty()
-                        } else {
-                            info.outputData.getString(UploadWorker.KEY_RESULT_URL).orEmpty()
+                        if (workObserved) {
+                            ok = true
+                            message = if (mode == UploadMode.DOWNLOAD) t.downloadDone else t.done
+                            result = if (mode == UploadMode.DOWNLOAD) {
+                                info.outputData.getString(DownloadWorker.KEY_RESULT_PATH).orEmpty()
+                            } else {
+                                info.outputData.getString(UploadWorker.KEY_RESULT_URL).orEmpty()
+                            }
                         }
                     }
                     WorkInfo.State.FAILED -> {
                         busy = false
-                        ok = false
-                        message = info.outputData.getString(DownloadWorker.KEY_ERROR).orEmpty().ifBlank { t.error }
-                        result = ""
+                        if (workObserved) {
+                            ok = false
+                            message = info.outputData.getString(DownloadWorker.KEY_ERROR).orEmpty().ifBlank { t.error }
+                            result = ""
+                        }
                     }
                     WorkInfo.State.CANCELLED -> {
                         busy = false
-                        ok = false
-                        message = t.cancelled
-                        result = ""
+                        if (workObserved) {
+                            ok = false
+                            message = t.cancelled
+                            result = ""
+                        }
                     }
                     else -> Unit
                 }
@@ -164,7 +188,11 @@ internal fun HomeScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .safeDrawingPadding()
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+                )
+                .padding(bottom = if (imeVisible) 0.dp else 108.dp)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
         ) {
@@ -196,46 +224,81 @@ internal fun HomeScreen(
                 shape = MaterialTheme.shapes.extraLarge
             ) {
                 Row(
-                    Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.Top
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 13.dp)
+                        .heightIn(min = 56.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Default.AccountCircle,
-                        null,
-                        Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(
-                        Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest
                     ) {
-                        Text(
-                            account ?: t.notConnected,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        if (token.isBlank()) {
-                            Text(
-                                t.authHint,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        if (!avatarUrl.isNullOrBlank() && !avatarFailed) {
+                            AsyncImage(
+                                model = avatarUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop,
+                                onError = { onAvatarFailedChanged(true) }
                             )
-                            TextButton(
-                                onClick = settings,
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text(t.noToken)
-                            }
+                        } else {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().padding(1.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Text(
+                        text = account ?: t.notConnected,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+
                     if (account != null) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            null,
-                            Modifier.padding(top = 2.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                        Spacer(Modifier.width(12.dp))
+                        Surface(
+                            modifier = Modifier.size(30.dp),
+                            shape = MaterialTheme.shapes.extraLarge,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.padding(5.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+
+                if (token.isBlank()) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 18.dp, end = 18.dp, bottom = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            t.authHint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
+                        TextButton(
+                            onClick = settings,
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Text(t.noToken)
+                        }
                     }
                 }
             }
@@ -269,7 +332,7 @@ internal fun HomeScreen(
                         modes.forEachIndexed { index, item ->
                             SegmentedButton(
                                 selected = mode == item,
-                                onClick = { if (!busy) { mode = item; clearFeedback() } },
+                                onClick = { if (!busy) { mode = item; workObserved = false; clearFeedback() } },
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
                                 modifier = Modifier.weight(1f),
                                 icon = {
@@ -477,6 +540,7 @@ internal fun HomeScreen(
                                     DownloadWorker.KEY_FULL_NAME to selected!!.fullName,
                                     DownloadWorker.KEY_BRANCH to selected!!.defaultBranch
                                 )
+                                workObserved = true
                                 WorkManager.getInstance(context).enqueueUniqueWork(
                                     DownloadWorker.WORK_NAME,
                                     ExistingWorkPolicy.REPLACE,
@@ -648,6 +712,7 @@ internal fun HomeScreen(
                         .setConstraints(constraints)
                         .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
                         .build()
+                    workObserved = true
                     WorkManager.getInstance(context).enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
                     busy = true
                     preview = null

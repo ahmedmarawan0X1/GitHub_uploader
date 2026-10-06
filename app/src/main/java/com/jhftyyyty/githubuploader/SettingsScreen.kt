@@ -41,6 +41,8 @@ internal fun SettingsPanel(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
     var showToken by remember { mutableStateOf(false) }
     var verifying by remember { mutableStateOf(false) }
     var tokenValid by remember { mutableStateOf<Boolean?>(null) }
@@ -52,11 +54,19 @@ internal fun SettingsPanel(
     }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+                )
+        ) {
             Column(
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
+                    .padding(bottom = if (imeVisible) 0.dp else 108.dp)
+                    .imePadding()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
@@ -205,7 +215,7 @@ internal fun SettingsPanel(
                     }
                 }
 
-                SectionHeader(Icons.Default.MoreHoriz, t.help)
+                SectionHeader(Icons.Default.HelpOutline, t.help)
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.extraLarge,
@@ -213,10 +223,10 @@ internal fun SettingsPanel(
                     elevation = CardDefaults.elevatedCardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(Modifier.padding(6.dp)) {
+                        SettingRow(Icons.Default.HelpOutline, t.help, t.help6, help)
                         SettingRow(Icons.Default.Link, t.projectLink, t.openProject) {
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(DEFAULT_PROJECT_URL))) }
                         }
-                        SettingRow(Icons.Default.HelpOutline, t.help, t.help6, help)
                     }
                 }
 
