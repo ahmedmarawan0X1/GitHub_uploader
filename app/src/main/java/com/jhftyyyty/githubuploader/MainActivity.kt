@@ -157,9 +157,7 @@ class MainActivity : ComponentActivity() {
 
                     Box(Modifier.fillMaxSize()) {
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = if (screen != Screen.HELP) 108.dp else 0.dp)
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             when (screen) {
                                 Screen.HOME -> HomeScreen(
@@ -220,9 +218,10 @@ class MainActivity : ComponentActivity() {
                                 .height(92.dp)
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                                 .graphicsLayer {
-                                    // Keep the bar composed and in the same place.
-                                    // Only make it invisible while the IME is visible;
-                                    // this prevents it from jumping above the keyboard.
+                                    // The bar is anchored to the real window bottom.
+                                    // It never follows the IME, so it can never float
+                                    // above the keyboard. It is simply hidden while IME
+                                    // occupies the bottom of the window.
                                     alpha = if (imeInsets.getBottom(density) > 0) 0f else 1f
                                 },
                             contentAlignment = Alignment.Center
