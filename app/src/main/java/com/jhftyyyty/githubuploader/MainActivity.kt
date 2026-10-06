@@ -138,6 +138,8 @@ class MainActivity : ComponentActivity() {
             AppTheme(dark) {
                 SideEffect { updateSystemBars(window, dark) }
 
+                val imeInsets = WindowInsets.ime
+
                 Box(Modifier.fillMaxSize()) {
                     when (screen) {
                         Screen.HOME -> HomeScreen(
@@ -197,7 +199,7 @@ class MainActivity : ComponentActivity() {
                                 .height(92.dp)
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                                 .offset {
-                                    IntOffset(0, WindowInsets.ime.getBottom(this))
+                                    IntOffset(0, imeInsets.getBottom(this))
                                 },
                             contentAlignment = Alignment.Center
                         ) {
