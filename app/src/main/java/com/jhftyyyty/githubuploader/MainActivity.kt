@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.WorkManager
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
