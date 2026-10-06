@@ -37,7 +37,6 @@ internal fun HomeScreen(
     autoNaming: Boolean,
     pick: () -> Unit,
     settings: () -> Unit,
-    imeVisible: Boolean,
     account: String?,
     onAccountChanged: (String?) -> Unit
 ) {
@@ -176,12 +175,9 @@ internal fun HomeScreen(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(
-                    if (imeVisible) {
-                        WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
-                    } else {
-                        WindowInsets.safeDrawing
-                    }
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
                 )
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
         ) {
@@ -215,10 +211,10 @@ internal fun HomeScreen(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 15.dp)
-                        .heightIn(min = 52.dp)
+                        .padding(horizontal = 16.dp, vertical = 13.dp)
+                        .heightIn(min = 56.dp)
                 ) {
-                    androidx.compose.foundation.layout.Row(
+                    Row(
                         Modifier
                             .align(Alignment.CenterEnd)
                             .padding(end = 2.dp),
@@ -227,10 +223,10 @@ internal fun HomeScreen(
                         Icon(
                             Icons.Default.AccountCircle,
                             null,
-                            Modifier.size(42.dp),
+                            Modifier.size(44.dp),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(10.dp))
                         Text(
                             account ?: t.notConnected,
                             style = MaterialTheme.typography.titleMedium,
@@ -240,14 +236,20 @@ internal fun HomeScreen(
                     }
 
                     if (account != null) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            null,
-                            Modifier
+                        Surface(
+                            modifier = Modifier
                                 .align(Alignment.CenterStart)
-                                .size(24.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                                .size(30.dp),
+                            shape = MaterialTheme.shapes.extraLarge,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                null,
+                                modifier = Modifier.padding(5.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
 
