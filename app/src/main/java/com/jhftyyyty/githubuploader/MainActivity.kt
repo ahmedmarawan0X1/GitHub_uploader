@@ -11,7 +11,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -19,10 +21,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.work.WorkManager
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
@@ -118,7 +119,6 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.AMOLED -> true
             }
             val t = AppStrings(this@MainActivity, language)
-            val imeVisible = ViewCompat.getRootWindowInsets(window.decorView)?.isVisible(WindowInsetsCompat.Type.ime()) == true
 
             BackHandler(screen != Screen.HOME) {
                 screen = when (screen) {
@@ -131,13 +131,13 @@ class MainActivity : ComponentActivity() {
             AppTheme(dark) {
                 SideEffect { updateSystemBars(window, dark) }
 
-                // The bottom navigation must not reserve space while the IME is open.
-                // Otherwise Scaffold keeps an empty area above the keyboard even though
-                // the navigation bar is visually covered by the IME.
+                // Compose observes IME insets, so the bottom navigation is removed
+                // as soon as the keyboard opens instead of leaving its old height reserved.
                 val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
                     bottomBar = {
                         if (screen != Screen.HELP && !imeVisible) {
                             NavigationBar(
