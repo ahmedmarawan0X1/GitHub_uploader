@@ -5,6 +5,7 @@ import com.jhftyyyty.githubuploader.core.*
 import android.content.Context
 import android.util.Base64OutputStream
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.HttpURLConnection
