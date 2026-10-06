@@ -7,12 +7,14 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.work.*
+import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -46,6 +49,8 @@ internal fun HomeScreen(
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     var mode by remember { mutableStateOf(UploadMode.NEW) }
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    var avatarFailed by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<RepoInfo?>(null) }
     var repoName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -92,6 +97,8 @@ internal fun HomeScreen(
             }
 
             onAccountChanged(data.first.login)
+            avatarUrl = data.first.avatarUrl
+            avatarFailed = false
             repos = data.second
             selected = selected?.let { old ->
                 data.second.firstOrNull { it.fullName == old.fullName }
@@ -100,6 +107,8 @@ internal fun HomeScreen(
             ok = null
         }.onFailure {
             onAccountChanged(null)
+            avatarUrl = null
+            avatarFailed = false
             repos = emptyList()
             selected = null
             message = GitHubApi.friendlyError(it.message ?: t.error)
@@ -218,14 +227,30 @@ internal fun HomeScreen(
                         .heightIn(min = 56.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(44.dp),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest
+                    ) {
+                        if (!avatarUrl.isNullOrBlank() && !avatarFailed) {
+                            AsyncImage(
+                                model = avatarUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop,
+                                onError = { avatarFailed = true }
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().padding(1.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(12.dp))
 
                     Text(
                         text = account ?: t.notConnected,
