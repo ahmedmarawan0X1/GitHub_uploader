@@ -13,6 +13,7 @@ import kotlinx.coroutines.ensureActive
 import java.net.URL
 import java.net.URLEncoder
 import java.security.MessageDigest
+import java.nio.charset.StandardCharsets
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -23,6 +24,14 @@ import org.json.JSONObject
 
 internal object GitHubApi {
     private const val API="https://api.github.com"
+    private const val INITIAL_PARALLELISM = 6
+    private const val MIN_PARALLELISM = 3
+    private const val MAX_PARALLELISM = 10
+    private const val INLINE_FILE_LIMIT = 256L * 1024L
+    private const val INLINE_BATCH_LIMIT = 2L * 1024L * 1024L
+    private const val MAX_HTTP_RETRIES = 3
+    private val RETRYABLE_CODES = setOf(408, 429, 500, 502, 503, 504)
+    private val RETRY_DELAYS_MS = longArrayOf(1000L, 2500L, 5000L)
 
     fun currentUser(token:String):GitHubUser {
         val r=request("GET",API+"/user",token); checkOk(r,"Authentication failed")
@@ -96,67 +105,127 @@ internal object GitHubApi {
         return UploadReview(files, additions, modified, unchanged, ignoredCount, remoteOnly, totalBytes)
     }
 
-    suspend fun uploadZipFile(context:Context,filePath:String,token:String,mode:UploadMode,newRepoName:String,description:String,privateRepo:Boolean,existing:RepoInfo?,resumeCheck:Boolean,progress:suspend (Int,Int,String)->Unit):String{
-        val target=resolveRepo(token,mode,newRepoName,description,privateRepo,existing,resumeCheck)
-        val head=branchHead(token,target.owner,target.name,target.branch)
-        val remote=tree(token,target.owner,target.name,head.treeSha)
+    suspend fun uploadZipFile(
+        context: Context,
+        filePath: String,
+        token: String,
+        mode: UploadMode,
+        newRepoName: String,
+        description: String,
+        privateRepo: Boolean,
+        existing: RepoInfo?,
+        resumeCheck: Boolean,
+        progress: suspend (Int, Int, String) -> Unit
+    ): String {
+        val target = resolveRepo(token, mode, newRepoName, description, privateRepo, existing, resumeCheck)
+        val head = branchHead(token, target.owner, target.name, target.branch)
+        val remote = tree(token, target.owner, target.name, head.treeSha)
         val rules = readIgnoreRules(filePath)
-        val total=countFiles(filePath, rules);check(total>0){"ZIP file contains no usable files"}
-        val seen=HashSet<String>();val treeEntries=JSONArray();var processed=0;var changed=0
-        data class Pending(val path:String,val temp:File,val sha:String)
-        val pending=ArrayList<Pending>()
+        val total = countFiles(filePath, rules)
+        check(total > 0) { "ZIP file contains no usable files" }
+
+        val seen = HashSet<String>()
+        val treeEntries = JSONArray()
+        var processed = 0
+        var changed = 0
+        var inlineBytes = 0L
+        var parallelism = INITIAL_PARALLELISM
+
+        data class Pending(val path: String, val temp: File, val sha: String)
+        val pending = ArrayList<Pending>()
 
         suspend fun uploadBatch() {
             if (pending.isEmpty()) return
-            val batch=pending.toList()
-            pending.clear()
-            val results=coroutineScope {
-                batch.map { item ->
-                    async(Dispatchers.IO) {
-                        coroutineContext.ensureActive()
-                        val sha = if (resumeCheck && blobExists(token,target.owner,target.name,item.sha)) item.sha else createBlob(token,target.owner,target.name,item.temp)
-                        item to sha
-                    }
-                }.awaitAll()
-            }
-            for ((item, sha) in results) {
-                changed++
-                treeEntries.put(JSONObject().put("path",item.path).put("mode","100644").put("type","blob").put("sha",sha))
-                item.temp.delete()
-                progress(processed,total,item.path)
+            val batch = pending.take(parallelism)
+            repeat(batch.size) { pending.removeAt(0) }
+            val started = System.nanoTime()
+            try {
+                val results = coroutineScope {
+                    batch.map { item ->
+                        async(Dispatchers.IO) {
+                            coroutineContext.ensureActive()
+                            val sha = if (resumeCheck && blobExists(token, target.owner, target.name, item.sha)) {
+                                item.sha
+                            } else {
+                                createBlob(token, target.owner, target.name, item.temp)
+                            }
+                            item to sha
+                        }
+                    }.awaitAll()
+                }
+                for ((item, sha) in results) {
+                    changed++
+                    treeEntries.put(JSONObject().put("path", item.path).put("mode", "100644").put("type", "blob").put("sha", sha))
+                    item.temp.delete()
+                    progress(processed, total, item.path)
+                }
+                val elapsedMs = (System.nanoTime() - started) / 1_000_000L
+                parallelism = when {
+                    elapsedMs < 2500L -> (parallelism + 1).coerceAtMost(MAX_PARALLELISM)
+                    elapsedMs > 10000L -> (parallelism - 1).coerceAtLeast(MIN_PARALLELISM)
+                    else -> parallelism
+                }
+            } catch (e: Exception) {
+                parallelism = (parallelism - 1).coerceAtLeast(MIN_PARALLELISM)
+                throw e
             }
         }
 
-        ZipInputStream(File(filePath).inputStream().buffered()).use{zip->
-            var e=zip.nextEntry
-            while(e!=null){
+        ZipInputStream(File(filePath).inputStream().buffered()).use { zip ->
+            var e = zip.nextEntry
+            while (e != null) {
                 coroutineContext.ensureActive()
-                if(!e.isDirectory){
-                    val path=safePath(e.name)
-                    if(path!=null&&!isIgnored(path, rules)){
-                        processed++;seen+=path
-                        val temp=File(context.cacheDir,"ghu_"+System.nanoTime()+".bin")
-                        val h=copyAndHash(zip,temp)
-                        if(remote[path]?.sha!=h.gitSha){
-                            pending += Pending(path,temp,h.gitSha)
-                            if (pending.size >= 6) uploadBatch()
-                        }else{
+                if (!e.isDirectory) {
+                    val path = safePath(e.name)
+                    if (path != null && !isIgnored(path, rules)) {
+                        processed++
+                        seen += path
+                        val temp = File(context.cacheDir, "ghu_" + System.nanoTime() + ".bin")
+                        val h = copyAndHash(zip, temp)
+                        if (remote[path]?.sha != h.gitSha) {
+                            val inline = if (h.size <= INLINE_FILE_LIMIT && inlineBytes + h.size <= INLINE_BATCH_LIMIT) readInlineText(temp) else null
+                            if (inline != null) {
+                                treeEntries.put(JSONObject().put("path", path).put("mode", "100644").put("type", "blob").put("content", inline))
+                                inlineBytes += h.size
+                                changed++
+                                temp.delete()
+                                progress(processed, total, path)
+                            } else {
+                                pending += Pending(path, temp, h.gitSha)
+                                if (pending.size >= parallelism) uploadBatch()
+                            }
+                        } else {
                             temp.delete()
-                            progress(processed,total,"Unchanged • "+path)
+                            progress(processed, total, "Unchanged • " + path)
                         }
                     }
                 }
-                zip.closeEntry();e=zip.nextEntry
+                zip.closeEntry()
+                e = zip.nextEntry
             }
         }
-        uploadBatch()
-                if(treeEntries.length()==0){progress(total,total,"No changes");return target.url}
-        val tree=request("POST",API+"/repos/"+enc(target.owner)+"/"+enc(target.name)+"/git/trees",token,JSONObject().put("base_tree",head.treeSha).put("tree",treeEntries).toString());checkOk(tree,"Git tree creation failed")
-        val treeSha=JSONObject(tree.body).getString("sha")
-        val commit=request("POST",API+"/repos/"+enc(target.owner)+"/"+enc(target.name)+"/git/commits",token,JSONObject().put("message",if(mode==UploadMode.NEW)"Upload project" else "Update project").put("tree",treeSha).put("parents",JSONArray().put(head.sha)).toString());checkOk(commit,"Commit creation failed")
-        val newSha=JSONObject(commit.body).getString("sha")
-        val update=request("PATCH",API+"/repos/"+enc(target.owner)+"/"+enc(target.name)+"/git/refs/heads/"+enc(target.branch),token,JSONObject().put("sha",newSha).put("force",false).toString());checkOk(update,"Branch update failed")
-        progress(total,total,"Completed • "+changed+" changed");return target.url
+        while (pending.isNotEmpty()) uploadBatch()
+
+        if (treeEntries.length() == 0) {
+            progress(total, total, "No changes")
+            return target.url
+        }
+
+        val treeResponse = request("POST", API + "/repos/" + enc(target.owner) + "/" + enc(target.name) + "/git/trees", token,
+            JSONObject().put("base_tree", head.treeSha).put("tree", treeEntries).toString())
+        checkOk(treeResponse, "Git tree creation failed")
+
+        val treeSha = JSONObject(treeResponse.body).getString("sha")
+        val commitResponse = request("POST", API + "/repos/" + enc(target.owner) + "/" + enc(target.name) + "/git/commits", token,
+            JSONObject().put("message", if (mode == UploadMode.NEW) "Upload project" else "Update project").put("tree", treeSha).put("parents", JSONArray().put(head.sha)).toString())
+        checkOk(commitResponse, "Git commit creation failed")
+
+        val newSha = JSONObject(commitResponse.body).getString("sha")
+        val update = request("PATCH", API + "/repos/" + enc(target.owner) + "/" + enc(target.name) + "/git/refs/heads/" + enc(target.branch), token,
+            JSONObject().put("sha", newSha).put("force", false).toString())
+        checkOk(update, "Branch update failed")
+        progress(total, total, "Completed • " + changed + " changed")
+        return target.url
     }
 
     suspend fun downloadRepository(token:String,repo:RepoInfo,out:File,progress:suspend (Long,Long)->Unit){
@@ -197,10 +266,36 @@ internal object GitHubApi {
     }
 
     private data class Remote(val sha:String,val type:String)
-    private fun tree(token:String,owner:String,repo:String,sha:String):Map<String,Remote>{
-        val r=request("GET",API+"/repos/"+enc(owner)+"/"+enc(repo)+"/git/trees/"+sha+"?recursive=1",token);checkOk(r,"Could not read repository tree")
-        val root=JSONObject(r.body);check(!root.optBoolean("truncated",false)){"Repository tree is too large to analyze safely"}
-        val a=root.getJSONArray("tree");val out=HashMap<String,Remote>();for(i in 0 until a.length()){val o=a.getJSONObject(i);out[o.getString("path")]=Remote(o.optString("sha"),o.optString("type"))};return out
+    private fun tree(token: String, owner: String, repo: String, sha: String): Map<String, Remote> {
+        val first = request("GET", API + "/repos/" + enc(owner) + "/" + enc(repo) + "/git/trees/" + sha + "?recursive=1", token)
+        checkOk(first, "Could not read repository tree")
+        val root = JSONObject(first.body)
+        val out = HashMap<String, Remote>()
+        if (!root.optBoolean("truncated", false)) {
+            val a = root.getJSONArray("tree")
+            for (i in 0 until a.length()) {
+                val o = a.getJSONObject(i)
+                out[o.getString("path")] = Remote(o.optString("sha"), o.optString("type"))
+            }
+            return out
+        }
+        data class Node(val prefix: String, val treeSha: String)
+        val stack = ArrayDeque<Node>()
+        stack.addLast(Node("", sha))
+        while (stack.isNotEmpty()) {
+            val node = stack.removeLast()
+            val response = request("GET", API + "/repos/" + enc(owner) + "/" + enc(repo) + "/git/trees/" + enc(node.treeSha), token)
+            checkOk(response, "Could not read repository tree")
+            val entries = JSONObject(response.body).getJSONArray("tree")
+            for (i in 0 until entries.length()) {
+                val o = entries.getJSONObject(i)
+                val name = o.getString("path")
+                val fullPath = if (node.prefix.isBlank()) name else node.prefix + "/" + name
+                if (o.optString("type") == "tree") stack.addLast(Node(fullPath, o.getString("sha")))
+                else out[fullPath] = Remote(o.optString("sha"), o.optString("type"))
+            }
+        }
+        return out
     }
 
     private fun countFiles(path:String, rules: Set<String>):Int{var n=0;ZipInputStream(File(path).inputStream().buffered()).use{z->var e=z.nextEntry;while(e!=null){val p=safePath(e.name);if(!e.isDirectory&&p!=null&&!isIgnored(p,rules))n++;z.closeEntry();e=z.nextEntry}};return n}
@@ -247,21 +342,72 @@ internal object GitHubApi {
         return HashResult(md.digest().toHex(),size)
     }
 
-    private fun blobExists(token:String,owner:String,repo:String,sha:String):Boolean{
-        val c=URL(API+"/repos/"+enc(owner)+"/"+enc(repo)+"/git/blobs/"+enc(sha)).openConnection() as HttpURLConnection
-        c.requestMethod="GET";c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2026-03-10");c.connectTimeout=15000;c.readTimeout=30000
-        val code=try{c.responseCode}finally{c.disconnect()}
-        return when { code in 200..299 -> true; code==404 -> false; else -> { checkOk(R(code,""),"Blob check failed"); false } }
+    private fun blobExists(token: String, owner: String, repo: String, sha: String): Boolean {
+        var attempt = 0
+        while (true) {
+            val c = URL(API + "/repos/" + enc(owner) + "/" + enc(repo) + "/git/blobs/" + enc(sha)).openConnection() as HttpURLConnection
+            c.requestMethod = "GET"
+            c.setRequestProperty("Authorization", "Bearer " + token)
+            c.setRequestProperty("Accept", "application/vnd.github+json")
+            c.setRequestProperty("X-GitHub-Api-Version", "2026-03-10")
+            c.connectTimeout = 20000
+            c.readTimeout = 30000
+            try {
+                val code = c.responseCode
+                if (code in 200..299) return true
+                if (code == 404) return false
+                if (attempt < MAX_HTTP_RETRIES && code in RETRYABLE_CODES) {
+                    Thread.sleep(retryDelay(c, attempt))
+                    attempt++
+                    continue
+                }
+                val body = c.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                checkOk(R(code, body), "Blob check failed")
+                return false
+            } finally { c.disconnect() }
+        }
     }
-    private fun createBlob(token:String,owner:String,repo:String,temp:File):String{
-        val c=URL(API+"/repos/"+enc(owner)+"/"+enc(repo)+"/git/blobs").openConnection() as HttpURLConnection
-        c.requestMethod="POST";c.doOutput=true;c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2026-03-10");c.setRequestProperty("Content-Type","application/json");c.connectTimeout=20000;c.readTimeout=120000
-        val out=c.outputStream
-        out.write("{\"content\":\"".toByteArray());out.flush()
-        temp.inputStream().buffered().use{input->val b64=Base64OutputStream(NonClosingOutputStream(out),android.util.Base64.NO_WRAP);input.copyTo(b64,64*1024);b64.close()}
-        out.write("\",\"encoding\":\"base64\"}".toByteArray());out.flush();out.close()
-        val code=c.responseCode;val body=(if(code in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText()}.orEmpty();c.disconnect()
-        val r=R(code,body);checkOk(r,"Blob upload failed");return JSONObject(r.body).getString("sha")
+
+    private fun createBlob(token: String, owner: String, repo: String, temp: File): String {
+        var attempt = 0
+        while (true) {
+            val c = URL(API + "/repos/" + enc(owner) + "/" + enc(repo) + "/git/blobs").openConnection() as HttpURLConnection
+            c.requestMethod = "POST"
+            c.doOutput = true
+            c.setRequestProperty("Authorization", "Bearer " + token)
+            c.setRequestProperty("Accept", "application/vnd.github+json")
+            c.setRequestProperty("X-GitHub-Api-Version", "2026-03-10")
+            c.setRequestProperty("Content-Type", "application/json")
+            c.connectTimeout = 20000
+            c.readTimeout = 120000
+            try {
+                c.outputStream.use { out ->
+                    out.write("{\"content\":\"".toByteArray())
+                    temp.inputStream().buffered().use { input ->
+                        val b64 = Base64OutputStream(NonClosingOutputStream(out), android.util.Base64.NO_WRAP)
+                        input.copyTo(b64, 64 * 1024)
+                        b64.close()
+                    }
+                    out.write("\",\"encoding\":\"base64\"}".toByteArray())
+                }
+                val code = c.responseCode
+                val body = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+                if (code in 200..299) return JSONObject(body).getString("sha")
+                if (attempt < MAX_HTTP_RETRIES && code in RETRYABLE_CODES) {
+                    Thread.sleep(retryDelay(c, attempt))
+                    attempt++
+                    continue
+                }
+                checkOk(R(code, body), "Blob upload failed")
+            } catch (e: IOException) {
+                if (attempt < MAX_HTTP_RETRIES) {
+                    Thread.sleep(RETRY_DELAYS_MS[attempt])
+                    attempt++
+                    continue
+                }
+                throw e
+            } finally { c.disconnect() }
+        }
     }
 
     private class NonClosingOutputStream(private val delegate:OutputStream):OutputStream(){override fun write(b:Int)=delegate.write(b);override fun write(b:ByteArray,off:Int,len:Int)=delegate.write(b,off,len);override fun flush()=delegate.flush();override fun close(){flush()}}
@@ -306,8 +452,54 @@ internal object GitHubApi {
         }
         error(errorMessage)
     }
-    private fun request(method:String,url:String,token:String,body:String?=null):R{
-        val c=URL(url).openConnection() as HttpURLConnection;c.requestMethod=method;c.setRequestProperty("Authorization","Bearer "+token);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2026-03-10");c.setRequestProperty("Content-Type","application/json");c.connectTimeout=20000;c.readTimeout=120000
-        if(body!=null){c.doOutput=true;c.outputStream.use{it.write(body.toByteArray())}};val code=c.responseCode;val text=(if(code in 200..299)c.inputStream else c.errorStream)?.bufferedReader()?.use{it.readText()}.orEmpty();c.disconnect();return R(code,text)
+    private fun request(method: String, url: String, token: String, body: String? = null): R {
+        var attempt = 0
+        while (true) {
+            val c = URL(url).openConnection() as HttpURLConnection
+            c.requestMethod = method
+            c.setRequestProperty("Authorization", "Bearer " + token)
+            c.setRequestProperty("Accept", "application/vnd.github+json")
+            c.setRequestProperty("X-GitHub-Api-Version", "2026-03-10")
+            c.setRequestProperty("Content-Type", "application/json")
+            c.connectTimeout = 20000
+            c.readTimeout = 120000
+            try {
+                if (body != null) {
+                    c.doOutput = true
+                    c.outputStream.use { it.write(body.toByteArray()) }
+                }
+                val code = c.responseCode
+                val text = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+                val rateLimited403 = code == 403 && text.contains("rate limit", ignoreCase = true)
+                if (attempt < MAX_HTTP_RETRIES && (code in RETRYABLE_CODES || rateLimited403)) {
+                    Thread.sleep(retryDelay(c, attempt))
+                    attempt++
+                    continue
+                }
+                return R(code, text)
+            } catch (e: IOException) {
+                if (attempt < MAX_HTTP_RETRIES) {
+                    Thread.sleep(RETRY_DELAYS_MS[attempt])
+                    attempt++
+                    continue
+                }
+                throw e
+            } finally { c.disconnect() }
+        }
     }
+
+    private fun readInlineText(file: File): String? {
+        return runCatching {
+            val bytes = file.readBytes()
+            if (bytes.any { it.toInt() == 0 }) return null
+            val text = String(bytes, StandardCharsets.UTF_8)
+            if (text.toByteArray(StandardCharsets.UTF_8).contentEquals(bytes)) text else null
+        }.getOrNull()
+    }
+
+    private fun retryDelay(connection: HttpURLConnection, attempt: Int): Long {
+        val retryAfter = connection.getHeaderField("Retry-After")?.toLongOrNull()
+        return retryAfter?.coerceIn(1L, 30L)?.times(1000L) ?: RETRY_DELAYS_MS[attempt]
+    }
+
 }
