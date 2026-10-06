@@ -25,6 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -141,110 +142,104 @@ class MainActivity : ComponentActivity() {
                 // as soon as the keyboard opens instead of leaving its old height reserved.
                 val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                    bottomBar = {
-                        if (screen != Screen.HELP && !imeVisible) {
-                            Box(
+                Box(Modifier.fillMaxSize()) {
+                    when (screen) {
+                        Screen.HOME -> HomeScreen(
+                            t = t,
+                            token = token,
+                            uri = selectedUri,
+                            name = selectedName,
+                            autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
+                            pick = {
+                                picker.launch(
+                                    arrayOf(
+                                        "application/zip",
+                                        "application/x-zip-compressed",
+                                        "application/octet-stream"
+                                    )
+                                )
+                            },
+                            settings = { screen = Screen.SETTINGS },
+                            imeVisible = imeVisible,
+                            account = account,
+                            onAccountChanged = { account = it },
+                        )
+
+                        Screen.SETTINGS -> SettingsPanel(
+                            t = t,
+                            token = token,
+                            theme = theme,
+                            language = language,
+                            autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
+                            changeToken = { value ->
+                                token = value
+                                if (value.isBlank()) account = null
+                                TokenStore(this@MainActivity).save(value)
+                            },
+                            changeTheme = { value ->
+                                theme = value
+                                prefs.edit().putString(PREF_THEME, value.name).apply()
+                            },
+                            changeLanguage = { value ->
+                                language = value
+                                prefs.edit().putString(PREF_LANGUAGE, value.name).apply()
+                            },
+                            changeAutoNaming = { value ->
+                                prefs.edit().putBoolean(PREF_AUTO_NAMING, value).apply()
+                            },
+                            back = { screen = Screen.HOME },
+                            help = { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
+                        )
+
+                        Screen.HELP -> HelpScreen(t) { screen = helpOrigin }
+                    }
+
+                    if (screen != Screen.HELP) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(92.dp)
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .alpha(if (imeVisible) 0f else 1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            NavigationBar(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(92.dp)
-                                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                                contentAlignment = Alignment.Center
+                                    .height(76.dp)
+                                    .clip(MaterialTheme.shapes.extraLarge),
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                tonalElevation = 0.dp,
+                                windowInsets = WindowInsets(0, 0, 0, 0)
                             ) {
-                                NavigationBar(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(76.dp)
-                                        .clip(MaterialTheme.shapes.extraLarge),
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    tonalElevation = 0.dp,
-                                    windowInsets = WindowInsets(0, 0, 0, 0)
-                                ) {
-                                    NavigationBarItem(
-                                        selected = screen == Screen.HOME,
-                                        colors = NavigationBarItemDefaults.colors(
-                                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                        ),
-                                        onClick = { screen = Screen.HOME },
-                                        icon = { Icon(Icons.Default.Home, null) },
-                                        label = { Text(t.home) }
-                                    )
-                                    NavigationBarItem(
-                                        selected = screen == Screen.SETTINGS,
-                                        colors = NavigationBarItemDefaults.colors(
-                                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                        ),
-                                        onClick = { screen = Screen.SETTINGS },
-                                        icon = { Icon(Icons.Default.Settings, null) },
-                                        label = { Text(t.settings) }
-                                    )
-                                }
+                                NavigationBarItem(
+                                    selected = screen == Screen.HOME,
+                                    colors = NavigationBarItemDefaults.colors(
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    onClick = { screen = Screen.HOME },
+                                    icon = { Icon(Icons.Default.Home, null) },
+                                    label = { Text(t.home) }
+                                )
+                                NavigationBarItem(
+                                    selected = screen == Screen.SETTINGS,
+                                    colors = NavigationBarItemDefaults.colors(
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    onClick = { screen = Screen.SETTINGS },
+                                    icon = { Icon(Icons.Default.Settings, null) },
+                                    label = { Text(t.settings) }
+                                )
                             }
-                        }
-                    }
-                ) { paddingValues ->
-                    androidx.compose.foundation.layout.Box(
-                        Modifier.fillMaxSize().padding(paddingValues)
-                    ) {
-                        when (screen) {
-                            Screen.HOME -> HomeScreen(
-                                t = t,
-                                token = token,
-                                uri = selectedUri,
-                                name = selectedName,
-                                autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
-                                pick = {
-                                    picker.launch(
-                                        arrayOf(
-                                            "application/zip",
-                                            "application/x-zip-compressed",
-                                            "application/octet-stream"
-                                        )
-                                    )
-                                },
-                                settings = { screen = Screen.SETTINGS },
-                                imeVisible = imeVisible,
-                                account = account,
-                                onAccountChanged = { account = it },
-                            )
-
-                            Screen.SETTINGS -> SettingsPanel(
-                                t = t,
-                                token = token,
-                                theme = theme,
-                                language = language,
-                                autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
-                                changeToken = { value ->
-                                    token = value
-                                    if (value.isBlank()) account = null
-                                    TokenStore(this@MainActivity).save(value)
-                                },
-                                changeTheme = { value ->
-                                    theme = value
-                                    prefs.edit().putString(PREF_THEME, value.name).apply()
-                                },
-                                changeLanguage = { value ->
-                                    language = value
-                                    prefs.edit().putString(PREF_LANGUAGE, value.name).apply()
-                                },
-                                changeAutoNaming = { value ->
-                                    prefs.edit().putBoolean(PREF_AUTO_NAMING, value).apply()
-                                },
-                                back = { screen = Screen.HOME },
-                                help = { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
-                            )
-
-                            Screen.HELP -> HelpScreen(t) { screen = helpOrigin }
                         }
                     }
                 }
