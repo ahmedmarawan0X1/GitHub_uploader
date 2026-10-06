@@ -154,8 +154,13 @@ class MainActivity : ComponentActivity() {
                     val imeInsets = WindowInsets.ime
 
                     Box(Modifier.fillMaxSize()) {
-                    when (screen) {
-                        Screen.HOME -> HomeScreen(
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = if (screen != Screen.HELP) 108.dp else 0.dp)
+                        ) {
+                            when (screen) {
+                                Screen.HOME -> HomeScreen(
                             t = t,
                             token = token,
                             uri = selectedUri,
@@ -201,10 +206,11 @@ class MainActivity : ComponentActivity() {
                             help = { helpOrigin = Screen.SETTINGS; screen = Screen.HELP }
                         )
 
-                        Screen.HELP -> HelpScreen(t) { screen = helpOrigin }
-                    }
+                                Screen.HELP -> HelpScreen(t) { screen = helpOrigin }
+                            }
+                        }
 
-                    if (screen != Screen.HELP) {
+                        if (screen != Screen.HELP) {
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
