@@ -211,47 +211,64 @@ internal fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.extraLarge
             ) {
-                Row(
-                    Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.Top
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 15.dp)
+                        .heightIn(min = 52.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.AccountCircle,
                         null,
-                        Modifier.size(40.dp),
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .size(42.dp),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Column(
-                        Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text(
-                            account ?: t.notConnected,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        if (token.isBlank()) {
-                            Text(
-                                t.authHint,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            TextButton(
-                                onClick = settings,
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text(t.noToken)
-                            }
-                        }
-                    }
+
+                    Text(
+                        account ?: t.notConnected,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 54.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+
                     if (account != null) {
                         Icon(
                             Icons.Default.CheckCircle,
                             null,
-                            Modifier.padding(top = 2.dp),
+                            Modifier
+                                .align(Alignment.CenterStart)
+                                .size(24.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
+                    }
+                }
+
+                if (token.isBlank()) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 18.dp, end = 18.dp, bottom = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            t.authHint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        TextButton(
+                            onClick = settings,
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Text(t.noToken)
+                        }
                     }
                 }
             }
