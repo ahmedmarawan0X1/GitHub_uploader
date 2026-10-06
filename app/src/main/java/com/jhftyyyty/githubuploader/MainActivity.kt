@@ -27,7 +27,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
@@ -154,6 +153,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     val imeInsets = WindowInsets.ime
                     val density = androidx.compose.ui.platform.LocalDensity.current
+                    val imeVisible = imeInsets.getBottom(density) > 0
 
                     Box(Modifier.fillMaxSize()) {
                         Box(
@@ -210,22 +210,15 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        if (screen != Screen.HELP) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(92.dp)
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .graphicsLayer {
-                                    // The bar is anchored to the real window bottom.
-                                    // It never follows the IME, so it can never float
-                                    // above the keyboard. It is simply hidden while IME
-                                    // occupies the bottom of the window.
-                                    alpha = if (imeInsets.getBottom(density) > 0) 0f else 1f
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
+                        if (screen != Screen.HELP && !imeVisible) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .height(92.dp)
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                             NavigationBar(
                                 modifier = Modifier
                                     .fillMaxWidth()
