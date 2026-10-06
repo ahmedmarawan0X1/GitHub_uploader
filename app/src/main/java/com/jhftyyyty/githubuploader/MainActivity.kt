@@ -27,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
@@ -152,6 +153,7 @@ class MainActivity : ComponentActivity() {
                     LocalLayoutDirection provides layoutDirection
                 ) {
                     val imeInsets = WindowInsets.ime
+                    val density = androidx.compose.ui.platform.LocalDensity.current
 
                     Box(Modifier.fillMaxSize()) {
                         Box(
@@ -217,8 +219,11 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .height(92.dp)
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .offset {
-                                    IntOffset(0, imeInsets.getBottom(this))
+                                .graphicsLayer {
+                                    // Keep the bar composed and in the same place.
+                                    // Only make it invisible while the IME is visible;
+                                    // this prevents it from jumping above the keyboard.
+                                    alpha = if (imeInsets.getBottom(density) > 0) 0f else 1f
                                 },
                             contentAlignment = Alignment.Center
                         ) {
