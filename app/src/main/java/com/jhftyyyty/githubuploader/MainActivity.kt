@@ -120,6 +120,8 @@ class MainActivity : ComponentActivity() {
             }
             var token by remember { mutableStateOf(TokenStore(this@MainActivity).get()) }
             var account by remember { mutableStateOf<String?>(null) }
+            var avatarUrl by remember { mutableStateOf(prefs.getString("github_avatar_url", null)) }
+            var avatarFailed by remember { mutableStateOf(false) }
             var screen by remember { mutableStateOf(Screen.HOME) }
             var helpOrigin by remember { mutableStateOf(Screen.HOME) }
 
@@ -178,6 +180,13 @@ class MainActivity : ComponentActivity() {
                             settings = { screen = Screen.SETTINGS },
                             account = account,
                             onAccountChanged = { account = it },
+                            avatarUrl = avatarUrl,
+                            avatarFailed = avatarFailed,
+                            onAvatarUrlChanged = {
+                                avatarUrl = it
+                                prefs.edit().putString("github_avatar_url", it).apply()
+                            },
+                            onAvatarFailedChanged = { avatarFailed = it },
                         )
 
                         Screen.SETTINGS -> SettingsPanel(
@@ -188,7 +197,12 @@ class MainActivity : ComponentActivity() {
                             autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
                             changeToken = { value ->
                                 token = value
-                                if (value.isBlank()) account = null
+                                if (value.isBlank()) {
+                                    account = null
+                                    avatarUrl = null
+                                    avatarFailed = false
+                                    prefs.edit().remove("github_avatar_url").apply()
+                                }
                                 TokenStore(this@MainActivity).save(value)
                             },
                             changeTheme = { value ->
