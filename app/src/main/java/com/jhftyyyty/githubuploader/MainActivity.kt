@@ -110,6 +110,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
             var token by remember { mutableStateOf(TokenStore(this@MainActivity).get()) }
+            var account by remember { mutableStateOf<String?>(null) }
             var screen by remember { mutableStateOf(Screen.HOME) }
             var helpOrigin by remember { mutableStateOf(Screen.HOME) }
 
@@ -195,6 +196,8 @@ class MainActivity : ComponentActivity() {
                                 },
                                 settings = { screen = Screen.SETTINGS },
                                 imeVisible = imeVisible,
+                                account = account,
+                                onAccountChanged = { account = it },
                             )
 
                             Screen.SETTINGS -> SettingsPanel(
@@ -205,6 +208,7 @@ class MainActivity : ComponentActivity() {
                                 autoNaming = prefs.getBoolean(PREF_AUTO_NAMING, true),
                                 changeToken = { value ->
                                     token = value
+                                    if (value.isBlank()) account = null
                                     TokenStore(this@MainActivity).save(value)
                                 },
                                 changeTheme = { value ->
