@@ -216,28 +216,28 @@ internal fun HomeScreen(
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 15.dp)
-                        .heightIn(min = 52.dp),
-                    contentAlignment = Alignment.Center
+                        .heightIn(min = 52.dp)
                 ) {
-                    Icon(
-                        Icons.Default.AccountCircle,
-                        null,
+                    androidx.compose.foundation.layout.Row(
                         Modifier
                             .align(Alignment.CenterEnd)
-                            .size(42.dp),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Text(
-                        account ?: t.notConnected,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 54.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
-                    )
+                            .padding(end = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            null,
+                            Modifier.size(42.dp),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            account ?: t.notConnected,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
 
                     if (account != null) {
                         Icon(
