@@ -43,10 +43,7 @@ internal fun HomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val contentBottomInsets = WindowInsets(
-        0, 0, 0,
-        with(density) { 108.dp.roundToPx() }
-    ).union(WindowInsets.ime)
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
     var mode by remember { mutableStateOf(UploadMode.NEW) }
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
     var selected by remember { mutableStateOf<RepoInfo?>(null) }
@@ -182,9 +179,8 @@ internal fun HomeScreen(
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
                 )
-                .windowInsetsPadding(
-                    contentBottomInsets.only(WindowInsetsSides.Bottom)
-                )
+                .padding(bottom = if (imeVisible) 0.dp else 108.dp)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
         ) {
