@@ -208,44 +208,40 @@ internal fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.extraLarge
             ) {
-                Box(
-                    Modifier
+                Row(
+                    modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 13.dp)
-                        .heightIn(min = 56.dp)
+                        .heightIn(min = 56.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.AccountCircle,
-                            null,
-                            Modifier.size(44.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            account ?: t.notConnected,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
-                        )
-                    }
+                    Icon(
+                        Icons.Default.AccountCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(44.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(Modifier.width(10.dp))
+
+                    Text(
+                        text = account ?: t.notConnected,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
 
                     if (account != null) {
+                        Spacer(Modifier.width(12.dp))
                         Surface(
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .size(30.dp),
+                            modifier = Modifier.size(30.dp),
                             shape = MaterialTheme.shapes.extraLarge,
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Icon(
                                 Icons.Default.Check,
-                                null,
+                                contentDescription = null,
                                 modifier = Modifier.padding(5.dp),
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
