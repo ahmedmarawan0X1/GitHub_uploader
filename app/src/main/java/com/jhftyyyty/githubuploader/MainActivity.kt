@@ -23,7 +23,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
@@ -137,7 +136,7 @@ class MainActivity : ComponentActivity() {
 
                 // Compose observes IME insets, so the bottom navigation is removed
                 // as soon as the keyboard opens instead of leaving its old height reserved.
-                val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+                val imeVisible = WindowInsets.ime.isVisible
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
