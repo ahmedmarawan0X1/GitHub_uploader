@@ -223,7 +223,7 @@ internal fun HomeScreen(
                         Icons.Default.AccountCircle,
                         null,
                         Modifier
-                            .align(Alignment.CenterStart)
+                            .align(Alignment.CenterEnd)
                             .size(42.dp),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
@@ -244,7 +244,7 @@ internal fun HomeScreen(
                             Icons.Default.CheckCircle,
                             null,
                             Modifier
-                                .align(Alignment.CenterEnd)
+                                .align(Alignment.CenterStart)
                                 .size(24.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
