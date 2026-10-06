@@ -137,7 +137,7 @@ class MainActivity : ComponentActivity() {
 
                 // Compose observes IME insets, so the bottom navigation is removed
                 // as soon as the keyboard opens instead of leaving its old height reserved.
-                val imeVisible = WindowInsets.ime.isVisible
+                val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
