@@ -42,10 +42,7 @@ internal fun SettingsPanel(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val contentBottomInsets = WindowInsets(
-        0, 0, 0,
-        with(density) { 108.dp.roundToPx() }
-    ).union(WindowInsets.ime)
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
     var showToken by remember { mutableStateOf(false) }
     var verifying by remember { mutableStateOf(false) }
     var tokenValid by remember { mutableStateOf<Boolean?>(null) }
@@ -68,9 +65,8 @@ internal fun SettingsPanel(
                 Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .windowInsetsPadding(
-                        contentBottomInsets.only(WindowInsetsSides.Bottom)
-                    )
+                    .padding(bottom = if (imeVisible) 0.dp else 108.dp)
+                    .imePadding()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
