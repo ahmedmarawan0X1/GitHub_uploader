@@ -25,9 +25,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import androidx.work.WorkManager
@@ -138,10 +137,6 @@ class MainActivity : ComponentActivity() {
             AppTheme(dark) {
                 SideEffect { updateSystemBars(window, dark) }
 
-                // Compose observes IME insets, so the bottom navigation is removed
-                // as soon as the keyboard opens instead of leaving its old height reserved.
-                val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-
                 Box(Modifier.fillMaxSize()) {
                     when (screen) {
                         Screen.HOME -> HomeScreen(
@@ -160,7 +155,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             },
                             settings = { screen = Screen.SETTINGS },
-                            imeVisible = imeVisible,
                             account = account,
                             onAccountChanged = { account = it },
                         )
@@ -201,7 +195,9 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .height(92.dp)
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
-                                .alpha(if (imeVisible) 0f else 1f),
+                                .offset {
+                                    IntOffset(0, WindowInsets.ime.getBottom(this))
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             NavigationBar(
