@@ -106,4 +106,10 @@ internal class AppStrings(context: Context, language: LanguageMode) {
     val help9 get() = get(R.string.help9)
     val help10 get() = get(R.string.help10)
     val help11 get() = get(R.string.help11)
+    val helpQuickGuide get() = get(R.string.help_quick_guide)
+    val helpQuickGuideSub get() = get(R.string.help_quick_guide_sub)
+    val helpSectionToken get() = get(R.string.help_section_token)
+    val helpSectionSecurity get() = get(R.string.help_section_security)
+    val helpSectionUpload get() = get(R.string.help_section_upload)
+    val helpSectionDownload get() = get(R.string.help_section_download)
 }
