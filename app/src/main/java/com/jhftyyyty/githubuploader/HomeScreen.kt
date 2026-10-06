@@ -42,7 +42,11 @@ internal fun HomeScreen(
     pick: () -> Unit,
     settings: () -> Unit,
     account: String?,
-    onAccountChanged: (String?) -> Unit
+    onAccountChanged: (String?) -> Unit,
+    avatarUrl: String?,
+    avatarFailed: Boolean,
+    onAvatarUrlChanged: (String?) -> Unit,
+    onAvatarFailedChanged: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -50,8 +54,6 @@ internal fun HomeScreen(
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     var mode by remember { mutableStateOf(UploadMode.NEW) }
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
-    var avatarUrl by remember { mutableStateOf<String?>(null) }
-    var avatarFailed by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<RepoInfo?>(null) }
     var repoName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -98,8 +100,8 @@ internal fun HomeScreen(
             }
 
             onAccountChanged(data.first.login)
-            avatarUrl = data.first.avatarUrl
-            avatarFailed = false
+            onAvatarUrlChanged(data.first.avatarUrl)
+            onAvatarFailedChanged(false)
             repos = data.second
             selected = selected?.let { old ->
                 data.second.firstOrNull { it.fullName == old.fullName }
@@ -108,8 +110,8 @@ internal fun HomeScreen(
             ok = null
         }.onFailure {
             onAccountChanged(null)
-            avatarUrl = null
-            avatarFailed = false
+            onAvatarUrlChanged(null)
+            onAvatarFailedChanged(false)
             repos = emptyList()
             selected = null
             message = GitHubApi.friendlyError(it.message ?: t.error)
@@ -239,7 +241,7 @@ internal fun HomeScreen(
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize().clip(CircleShape),
                                 contentScale = ContentScale.Crop,
-                                onError = { avatarFailed = true }
+                                onError = { onAvatarFailedChanged(true) }
                             )
                         } else {
                             Icon(
